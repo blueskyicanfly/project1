@@ -131,6 +131,23 @@ def main():
         got_dh = h_before2 - h_mid
         check('拖拽跟手比例≈1:1', abs(got_dh-exp_dh)/exp_dh < 0.15, (round(exp_dh,3), round(got_dh,3)))
 
+        # ---- 4f. 回归：抬起再抓，向上拖必须能把高度重新拉大（旧版 min(h0,..) 钳死 bug）----
+        ws.ev("setHB(2)")
+        time.sleep(0.2)
+        hp2 = ev("""JSON.stringify((function(){const p=cartPos(0),d=derived(),r=cv.getBoundingClientRect();
+          const bw=Math.min(30+Math.cbrt(state.m)*16,78);
+          const ax=p.x-Math.sin(d.th)*(bw*0.34+6), ay=p.y+Math.cos(d.th)*(bw*0.34+6);
+          return {x:ax,y:ay,cx:r.left,cy:r.top,sc:r.width/W}})())""")
+        HP2 = json.loads(hp2)
+        hx, hy = HP2['cx']+HP2['x']*HP2['sc'], HP2['cy']+HP2['y']*HP2['sc']
+        cdp_mouse(ws, "mousePressed", hx, hy, button="left", click_count=1)
+        for i in range(1, 5):
+            cdp_mouse(ws, "mouseMoved", hx, hy - i*20, button="left"); time.sleep(0.05)
+        cdp_mouse(ws, "mouseReleased", hx, hy-80, button="left")
+        time.sleep(0.3)
+        h_up = float(ev("state.h"))
+        check('再抓向上拖：高度能重新变大（回归）', h_up > 2.5, '2 -> %s' % round(h_up,3))
+
         # ---- 5. 点画布空白处 = 释放；再点 = 暂停 ----
         cx0, cy0 = P2['cx'] + 60*P2['sc'], P2['cy'] + 60*P2['sc']   # 画布左上空白区
         cdp_mouse(ws, "mouseMoved", cx0, cy0); time.sleep(0.2)

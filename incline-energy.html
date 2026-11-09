@@ -611,10 +611,10 @@ cv.addEventListener('pointermove', (e)=>{
     const g = geom(), dy = y - dragBase.y;
     if(dragging==='h' || dragging==='cart'){
       /* 抓车/抓顶点上下拽：高度变化与手指竖直位移严格成比例——
-         坡高 h（米）= 按下值 h0 − dy(像素)/pxPerM。
-         画幅固定、pxPerM 恒定 → “拖到哪，高度就是哪”，绝无放大效应；
-         斜面越平时拖同样距离高度变化也一样直观（按米读数，不再跳变）。 */
-      setHB(Math.min(dragBase.h0, dragBase.h0 - dy/g.pxPerM));
+         坡高 h（米）= 按下值 h0 − dy(像素)/pxPerM，向上拖变大、向下拖变小，双向对称。
+         （旧版曾有 min(h0,…) 把“往回拖”钳死在按下值 → 抬起再抓只能越拖越小，已删。）
+         画幅固定、pxPerM 恒定 → “拖到哪，高度就是哪”，绝无放大效应。 */
+      setHB(dragBase.h0 - dy/g.pxPerM);
     }
     return;
   }
