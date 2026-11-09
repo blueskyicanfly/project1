@@ -240,6 +240,14 @@
     for (const [el, attr, val] of ATTR_NODES) {
       el.setAttribute(attr, LANG === 'en' ? ATTRS[val] : val);
     }
+    /* 图片随语言切换：<img data-lang-zh="a.jpg" data-lang-en="b.jpg"> */
+    document.querySelectorAll('img[data-lang-en], img[data-lang-zh]').forEach(function (el) {
+      if (!el.dataset.origSrc) el.dataset.origSrc = el.getAttribute('src');
+      const pick = (LANG === 'en') ? el.dataset.langEn : el.dataset.langZh;
+      const src = pick || el.dataset.origSrc;
+      if (el.getAttribute('src') !== src) el.setAttribute('src', src);
+    });
+
     Object.keys(BLOCKS).forEach(function (id) {
       const el = document.getElementById(id);
       if (!el) return;

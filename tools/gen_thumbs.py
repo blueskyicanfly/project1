@@ -24,16 +24,21 @@ def shoot(page_abs, out_base):
             time.sleep(2.0)
 
             # 先设语言（触发 langchange → 页面重绘 canvas），再把小球放到斜面中段并重绘
+            # 先切语言（会触发 langchange），再设状态，并冻结动画循环：
+            # loop() 里的积分步进会把小球跑到底端，必须把 requestAnimationFrame 换掉
             setup = """(function(){
               window.SiteLang.setLang('%s');
-              const d=derived();
-              state.s=d.L*0.45; state.v=Math.sqrt(2*d.a*state.s);
-              simTime=Math.sqrt(2*state.s/d.a); state.running=true;
+              window.requestAnimationFrame = function(){ return 0; };   // 冻结主循环
+              const d = derived();
+              state.s = d.L*0.45;
+              state.v = Math.sqrt(2*d.a*state.s);
+              simTime = Math.sqrt(2*state.s/d.a);
+              state.running = true; state.done = false; last = null;
               buildTable(); readouts(); draw();
-              return 'ok';
+              return {s:state.s.toFixed(2), v:state.v.toFixed(2), t:simTime.toFixed(2)};
             })()""" % lang
             print(lang, ws.ev(setup))
-            time.sleep(0.6)
+            time.sleep(0.8)
 
             d = ws.cmd("Page.captureScreenshot", {"format": "png"})
             png_path = "%s_%s.png" % (out_base, lang)
