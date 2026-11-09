@@ -49,21 +49,32 @@
   table.data th:first-child,table.data td:first-child{text-align:left}
   .err{color:var(--warn);font-size:12px;margin-top:8px;min-height:16px}
   .note{color:var(--dim);font-size:12px;margin-top:10px}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+  .lang{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:999px;
+    overflow:hidden;background:#0b0e11;flex:none}
+  .lang button{border:0;background:transparent;color:var(--dim);padding:7px 15px;font-size:13px;
+    border-radius:0;cursor:pointer;font-family:inherit}
+  .lang button.on{background:var(--acc);color:#04121f;font-weight:600}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>Object on Incline · 斜面模型机械能守恒</h1>
-  <div class="sub">光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量</div>
+  <div class="topbar">
+    <div>
+      <h1>Object on Incline · 斜面模型机械能守恒</h1>
+      <div class="sub">光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量</div>
+    </div>
+    <div class="lang" id="langSwitch">
+      <button id="langZh" onclick="setLang('zh')">中文</button>
+      <button id="langEn" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
 
   <div class="grid">
     <!-- ===== 画布 ===== -->
     <div class="card">
       <canvas id="cv" width="760" height="470"></canvas>
-      <div class="formula">
-        下滑加速度 <code>a = g·sinθ</code>　沿斜面位移 <code>L = √(h² + b²)</code><br>
-        底端速度 <code>v = √(2gh)</code>　动能 <code>Ek = ½mv²</code>　减少的势能 <code>= mgh</code>
-      </div>
+      <div class="formula" id="formulaBox"></div>
       <div class="btns">
         <button class="pri" id="btnRelease">释放小球</button>
         <button id="btnPause">暂停 / 继续</button>
@@ -130,18 +141,142 @@
     <table class="data" style="margin-top:10px">
       <thead>
         <tr><th>高度 h</th><th>底边 b</th><th>倾角 θ</th><th>加速度 a</th>
-            <th>理论 v=√(2gh)</th><th>模拟 v（数值积分）</th><th>偏差</th></tr>
+            <th>理论 v=√&#40;2gh)</th><th>模拟 v（数值积分）</th><th>偏差</th></tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
-    <div class="note">
-      伽利略的结论：同一高度、不同倾角，末速度相同；但倾角越陡用时越短。
-      「模拟」列是用 a = g·sinθ 做数值积分跑出来的结果，与理论公式对得上即证明模型正确。
-    </div>
+    <div class="note" id="noteBox"></div>
   </div>
 </div>
 
 <script>
+/* ============================================================
+   语言切换：双语字典 + 静态文本节点自动采集
+   原理：启动时扫描 body 里所有文本节点存下原文；切英文时按字典替换。
+   以后新增中文文案会被自动登记，无需改代码结构，只要补 DICT。
+   ============================================================ */
+const DICT = {
+  'Object on Incline · 斜面模型机械能守恒':'Object on Incline \u00b7 Mechanical Energy Conservation',
+  '光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量':
+    'Frictionless incline \u00b7 adjust height h and base b live \u00b7 yellow arrow = instantaneous velocity',
+  '斜面高度 h（米）':'Incline height h (m)',
+  '斜面底边长 b（米）':'Incline base b (m)',
+  '物体质量 m（千克）':'Mass m (kg)',
+  '考虑滚动（实心球，等效加速度':'Rolling (solid sphere, effective acceleration',
+  '释放小球':'Release',
+  '暂停 / 继续':'Pause / Resume',
+  '复位':'Reset',
+  /* --- 右侧读数表第一列（必须与 HTML 里的文本一字不差）--- */
+  '底端速度 v':'Speed at bottom v',
+  '动能 Ek = ½mv²':'Kinetic energy Ek = \u00bdmv\u00b2',
+  '斜面高度 h':'Incline height h',
+  '斜面底边 b':'Incline base b',
+  '斜面长度 L（斜边）':'Slope length L (hypotenuse)',
+  '下滑时间 t':'Travel time t',
+  '实时读数（小球运动过程中）':'Live readings (during motion)',
+  '物理量':'Quantity',
+  '当前值':'Current',
+  '底端时':'At bottom',
+  '已下滑距离 s':'Distance travelled s',
+  '剩余高度 Δh':'Remaining height \u0394h',
+  '速度 v':'Speed v',
+  '减少的重力势能 mgΔh':'Lost GPE mg\u0394h',
+  '机械能合计 Ek + 剩余Ep':'Total energy Ek + PE',
+  '最右两列若始终相等（Ek 增加量 = Ep 减少量），即验证了机械能守恒。':
+    'If the last two columns stay equal (gain in Ek = loss in PE), mechanical energy is conserved.',
+  '核心验证：末速度只取决于高度，与倾角无关':'Key check: final speed depends only on height, not on angle',
+  '高度 h':'Height h',
+  '底边 b':'Base b',
+  '倾角 θ':'Angle \u03b8',
+  '加速度 a':'Acceleration a',
+  '理论 v=√(2gh)':'Theory v=\u221a(2gh)',
+  '模拟 v（数值积分）':'Simulated v (integration)',
+  '偏差':'Deviation',
+
+  '注：勾选「考虑滚动」后有一部分能量转为转动动能，末速度会比 √(2gh) 略小，这是真实小球会滚而不滑的情况。':
+    'Note: with rolling enabled some energy becomes rotational kinetic energy, so the final speed falls slightly below \u221a(2gh) \u2014 as a real ball rolls rather than slides.',
+  '很缓':'Very gentle',
+  '中等':'Moderate',
+  '45°附近':'Near 45\u00b0',
+  '较陡':'Steep',
+  '很陡':'Very steep',
+  '当前理论末速度 √(2gh) =':'Theoretical final speed \u221a(2gh) =',
+  /* 底部说明整块双语（两句话，含标签/换行，不走文本节点扫描）*/
+  '当前数值积分结果 =':'Numeric-integration result =',
+
+};
+
+/* 公式框整块双语：含 <code> 标签，不适合走文本节点扫描 */
+const NOTE_TEXT = {
+  zh: '伽利略的结论：同一高度、不同倾角，末速度相同；但倾角越陡用时越短。 '
+    + '「模拟」列是用 a = g·sinθ 做数值积分跑出来的结果，与理论公式对得上即证明模型正确。',
+  en: "Galileo's result: at the same height the final speed is the same for every angle; a steeper slope simply takes less time. "
+    + 'The "Simulated" column comes from numerically integrating a = g\u00b7sin\u03b8; agreement with the formula validates the model.',
+};
+const FORMULA = {
+  zh: '下滑加速度 <code>a = g·sinθ</code>　沿斜面位移 <code>L = √(h² + b²)</code><br>'
+    + '底端速度 <code>v = √(2gh)</code>　动能 <code>Ek = ½mv²</code>　减少的势能 <code>= mgh</code>',
+  en: 'Acceleration <code>a = g\u00b7sin\u03b8</code> \u00b7 Distance along slope <code>L = \u221a(h\u00b2 + b\u00b2)</code><br>'
+    + 'Speed at bottom <code>v = \u221a(2gh)</code> \u00b7 Kinetic energy <code>Ek = \u00bdmv\u00b2</code> \u00b7 Lost PE <code>= mgh</code>',
+};
+
+/* 画布/动态文字专用字典：这部分不在 DOM 里，扫不到，必须显式登记 */
+const CANVAS_TXT = {
+  '静止待释放':'At rest \u2014 ready to release',
+  '运动进行中…':'Running\u2026',
+  '已到达底端':'Reached the bottom',
+  '斜面高度':'Incline height',
+  '斜面底边':'Incline base',
+  '倾角':'Angle',
+};
+
+let LANG = 'zh';
+try{ LANG = localStorage.getItem('incline-lang') || 'zh'; }catch(e){}
+const T = (zh,en) => LANG==='en' ? en : zh;
+
+/* 扫描文本节点：存原文，切语言时按字典替换 */
+const PHRASES = new Map();
+const NODES = [];
+function collect(){
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while((n = w.nextNode())){
+    const raw = n.nodeValue;
+    if(!raw.trim()) continue;
+    if(n.parentNode && /^(script|style)$/i.test(n.parentNode.tagName)) continue;
+    NODES.push([n, raw]);
+    const k = raw.trim();
+    if(!PHRASES.has(k)) PHRASES.set(k, DICT[k] || '');
+  }
+}
+function tr(s){ const t = (LANG==='en' && CANVAS_TXT[s]) || (LANG==='en' && DICT[s]); return t || s; }
+
+function applyLang(){
+  for(const [node, raw] of NODES){
+    if(LANG === 'zh'){ node.nodeValue = raw; continue; }
+    const k = raw.trim(), en = PHRASES.get(k);
+    if(en){
+      const lead = raw.match(/^\s*/)[0], tail = raw.match(/\s*$/)[0];
+      node.nodeValue = lead + en + tail;
+    }
+  }
+  document.getElementById('formulaBox').innerHTML = FORMULA[LANG];
+  document.getElementById('noteBox').textContent = NOTE_TEXT[LANG];
+  document.documentElement.lang = LANG==='en' ? 'en' : 'zh-CN';
+  document.title = LANG==='en'
+    ? 'Object on Incline \u00b7 Mechanical Energy Conservation'
+    : 'Object on Incline \u00b7 斜面模型机械能守恒';
+  document.getElementById('langZh').classList.toggle('on', LANG==='zh');
+  document.getElementById('langEn').classList.toggle('on', LANG==='en');
+  draw(); readouts(); buildTable();
+}
+function setLang(l){
+  if(LANG === l) return;
+  LANG = l;
+  try{ localStorage.setItem('incline-lang', l); }catch(e){}
+  applyLang();
+}
+
 /* ============================================================
    物理模型（光滑斜面，无摩擦）
    θ = atan(h/b)          倾角
@@ -223,7 +358,7 @@ function draw(){
   arrow(ctx,hx,g.groundY,hx,g.top.y,'#8b98a5',6);
   ctx.fillStyle='#c9d7e6'; ctx.font='13px ui-monospace,Consolas,monospace';
   ctx.textAlign='right';
-  ctx.fillText('h = '+state.h.toFixed(2)+' m', hx-6, (g.top.y+g.groundY)/2);
+  ctx.fillText(T('斜面高度','Incline height')+' h = '+state.h.toFixed(2)+' m', hx-6, (g.top.y+g.groundY)/2);
 
   // 底边标注
   const by = g.groundY + 30;
@@ -234,7 +369,7 @@ function draw(){
   arrow(ctx,g.top.x,by,g.br.x,by,'#8b98a5',6);
   arrow(ctx,g.br.x,by,g.top.x,by,'#8b98a5',6);
   ctx.textAlign='center';
-  ctx.fillText('b = '+state.b.toFixed(2)+' m', (g.top.x+g.br.x)/2, by-7);
+  ctx.fillText(T('斜面底边','Incline base')+' b = '+state.b.toFixed(2)+' m', (g.top.x+g.br.x)/2, by-7);
 
   // 倾角 θ
   const deg = d.th*180/Math.PI;
@@ -243,33 +378,42 @@ function draw(){
   ctx.arc(g.br.x,g.groundY, 34, Math.PI, Math.PI + d.th, true);
   ctx.stroke();
   ctx.fillStyle='#3fb950'; ctx.textAlign='right';
-  ctx.fillText('θ = '+deg.toFixed(1)+'°', g.br.x-40, g.groundY-8);
+  ctx.fillText(T('倾角','Angle')+' θ = '+deg.toFixed(1)+'°', g.br.x-40, g.groundY-8);
 
   // 小球
   const r = 6 + Math.cbrt(state.m)*7;
   ctx.fillStyle='#ff7b54'; ctx.strokeStyle='#ffd0c2'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
 
-  // 速度矢量（沿斜面向下）
+  // 速度矢量（沿斜面向下）与加速度矢量：两者错开，不叠在一起
   if(state.v > 0.01){
     const ux = Math.cos(d.th), uy = Math.sin(d.th);           // 沿斜面向下的单位向量
-    const len = 34 + state.v * 15;                            // 长度随速度增长
+    const nx = -uy, ny = ux;                                  // 法向（指向斜面下方一侧）
+    const off = 24;                                           // 加速度箭头的错位距离
+
+    // 速度矢量：从球心出发，黄色，标注字号加大
+    const len = 34 + state.v * 15;
     const x2 = p.x + ux*len, y2 = p.y + uy*len;
     arrow(ctx,p.x,p.y,x2,y2,'#ffb020',9);
-    ctx.fillStyle='#ffb020'; ctx.font='bold 13px ui-monospace,Consolas,monospace';
+    ctx.fillStyle='#ffb020'; ctx.font='bold 19px ui-monospace,Consolas,monospace';
     ctx.textAlign='left';
-    ctx.fillText('v = '+state.v.toFixed(2)+' m/s', x2+8, y2-4);
+    ctx.fillText('v = '+state.v.toFixed(2)+' m/s', x2+10, y2+22);
 
-    // 加速度矢量（青色，较短）
-    const al = 26 + d.a*3.2;
-    arrow(ctx,p.x,p.y,p.x+ux*al,p.y+uy*al,'#39c5cf',7);
-    ctx.fillStyle='#39c5cf'; ctx.font='12px ui-monospace,Consolas,monospace';
-    ctx.fillText('a = '+d.a.toFixed(2)+' m/s²', p.x+ux*al+8, p.y+uy*al+14);
+    // 加速度矢量：起点沿法向偏移，青色，标注在箭头另一侧
+    const ax1 = p.x + nx*off, ay1 = p.y + ny*off;
+    const al  = 26 + d.a*3.2;
+    const ax2 = ax1 + ux*al,  ay2 = ay1 + uy*al;
+    arrow(ctx,ax1,ay1,ax2,ay2,'#39c5cf',7);
+    ctx.fillStyle='#39c5cf'; ctx.font='bold 14px ui-monospace,Consolas,monospace';
+    ctx.textAlign='left';
+    ctx.fillText('a = '+d.a.toFixed(2)+' m/s\u00b2', ax2+10, ay2-10);
   }
 
   // 标题栏读数
   ctx.fillStyle='#8b98a5'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
-  const st = state.done ? '已到达底端' : (state.running ? '运动进行中…' : '静止待释放');
+  const st = state.done ? tr('已到达底端')
+             : state.running ? tr('运动进行中…')
+             : tr('静止待释放');
   ctx.fillText(st + '   |   t = ' + simTime.toFixed(2) + ' s', g.padL-24, 26);
 }
 
@@ -356,11 +500,11 @@ function simulate(h,b,roll){
 function buildTable(){
   const h = state.h, roll = state.roll;
   const rows = [
-    ['很缓', h, h*3.0],
-    ['中等', h, h*1.6],
-    ['45°附近', h, h],
-    ['较陡', h, h*0.55],
-    ['很陡', h, h*0.25],
+    [tr('很缓'), h, h*3.0],
+    [tr('中等'), h, h*1.6],
+    [tr('45°附近'), h, h],
+    [tr('较陡'), h, h*0.55],
+    [tr('很陡'), h, h*0.25],
   ];
   let html='';
   for(const [name,hh,bb] of rows){
@@ -376,8 +520,8 @@ function buildTable(){
 
   const vCur = state.roll ? Math.sqrt(2*(5/7)*G*h) : Math.sqrt(2*G*h);
   const cur  = simulate(h, state.b, roll);
-  document.getElementById('thTag').textContent  = '当前理论末速度 √(2gh) = '+vCur.toFixed(3)+' m/s';
-  document.getElementById('simTag').textContent = '当前数值积分结果 = '+cur.vSim.toFixed(3)+' m/s';
+  document.getElementById('thTag').textContent  = tr('当前理论末速度 √(2gh) =')+vCur.toFixed(3)+' m/s';
+  document.getElementById('simTag').textContent = tr('当前数值积分结果 =')+cur.vSim.toFixed(3)+' m/s';
 }
 
 /* ---------- 控件绑定：滑块与数字框双向联动 ---------- */
@@ -386,7 +530,8 @@ function bind(rangeId, numId, key, min, max){
   const err=document.getElementById('err');
   const apply=(val)=>{
     if(!Number.isFinite(val) || val<min || val>max){
-      err.textContent = '请输入 '+min+' ~ '+max+' 之间的数值'; return;
+      err.textContent = LANG==='en' ? ('Enter a value between '+min+' and '+max)
+                                    : ('请输入 '+min+' ~ '+max+' 之间的数值'); return;
     }
     err.textContent='';
     state[key]=val; r.value=val; n.value=val;
@@ -425,7 +570,7 @@ function resize(){
 window.addEventListener('resize', resize);
 
 /* ---------- 启动 ---------- */
-buildTable(); readouts(); resize(); requestAnimationFrame(loop);
+collect(); applyLang(); buildTable(); readouts(); resize(); requestAnimationFrame(loop);
 </script>
 </body>
 </html>
