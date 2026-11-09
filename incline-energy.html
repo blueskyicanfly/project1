@@ -75,9 +75,10 @@
       <canvas id="cv" width="760" height="470"></canvas>
       <div class="formula" id="formulaBox"></div>
       <div class="btns">
-        <button class="pri" id="btnRelease">释放小球</button>
+        <button class="pri" id="btnRelease">释放小车</button>
         <button id="btnPause">暂停 / 继续</button>
         <button id="btnReset">复位</button>
+        <button id="btnSlow">慢动作 \u00d71</button>
       </div>
     </div>
 
@@ -101,8 +102,6 @@
         <input type="number" id="mNum" min="0.1" max="20" step="0.1" value="2">
       </div>
 
-      <label class="chk"><input type="checkbox" id="ckRoll"><span>考虑滚动（实心球，等效加速度 <code>5/7·g·sinθ</code>）</span></label>
-
       <table>
         <tr><th>底端速度 v</th><td class="v big" id="rV">—</td></tr>
         <tr><th>动能 Ek = ½mv²</th><td class="v" id="rP">—</td></tr>
@@ -114,13 +113,12 @@
         <tr><th>下滑时间 t</th><td class="v" id="rT">—</td></tr>
       </table>
       <div class="err" id="err"></div>
-      <div class="note" id="rollNote"></div>
     </div>
   </div>
 
   <!-- ===== 实时读数 + 理论对照 ===== -->
   <div class="card sec">
-    <h1 style="font-size:16px">实时读数（小球运动过程中）</h1>
+    <h1 style="font-size:16px">实时读数（小车运动过程中）</h1>
     <table>
       <tr><th>物理量</th><th>当前值</th><th>底端时</th></tr>
       <tr><td>已下滑距离 s</td><td class="v" id="cS">—</td><td class="v" id="eS">—</td></tr>
@@ -156,20 +154,6 @@
 const tr = (s) => (window.SiteLang ? window.SiteLang.tr(s) : s);
 const getLang = () => (window.SiteLang ? window.SiteLang.getLang() : 'zh');
 
-/* 含标签/无法走文本扫描的块：由页面自己提供双语，SiteLang 只负责触发事件 */
-const PAGE_BLOCKS = {
-  rollNote: {
-    zh: '注：勾选「考虑滚动」后有一部分能量转为转动动能，末速度会比 √(2gh) 略小，这是真实小球会滚而不滑的情况。',
-    en: 'Note: with rolling enabled some energy becomes rotational kinetic energy, so the final speed falls slightly below \u221a(2gh) \u2014 as a real ball rolls rather than slides.',
-  },
-};
-function applyBlocks(){
-  Object.keys(PAGE_BLOCKS).forEach(function(id){
-    const el = document.getElementById(id);
-    if(el) el.textContent = PAGE_BLOCKS[id][getLang()];
-  });
-}
-
 /* ============================================================
    物理模型（光滑斜面，无摩擦）
    θ = atan(h/b)          倾角
@@ -179,7 +163,8 @@ function applyBlocks(){
    ============================================================ */
 const G = 9.8;
 
-const state = { h:3, b:4, m:2, roll:false, s:0, v:0, running:false, done:false };
+const state = { h:3, b:4, m:2, s:0, v:0, running:false, done:false };
+let slowFactor = 1;   // 慢动作倍率：1 / 5 / 10
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -187,7 +172,9 @@ let W = cv.width, H = cv.height;
 
 /* ---------- 几何：把物理量换算成画布坐标 ---------- */
 function geom(){
-  const padL=58, padR=40, padT=56, padB=64;
+  /* 左边距留足：高度标注线在顶点左侧 30px，文字再往左排（右对齐），
+     约需 120px；之前只留 58px，「斜面高度 h = x.xx m」整截被裁在画布外 */
+  const padL=128, padR=76, padT=64, padB=92;
   const availW = W - padL - padR;
   const availH = H - padT - padB;
 
@@ -195,40 +182,92 @@ function geom(){
   const pxPerM = Math.max(scale, 1);
 
   const groundY = padT + state.h * pxPerM;         // 底边所在的水平线
-  const originX = padL;                            // 斜面顶端（小球起点）
+  const originX = padL;                            // 斜面顶端（小车起点，也是拖拽手柄）
 
   return {
     pxPerM, groundY,
     top:{ x:originX, y:padT },
-    br :{ x:originX + state.b*pxPerM, y:groundY }, // 斜面底端
+    br :{ x:originX + state.b*pxPerM, y:groundY }, // 斜面底端（也是拖拽手柄）
     padL, padR, padT, padB
   };
 }
 
-/* 小球沿斜面走了 s 米时的画布位置 */
-function ballPos(s){
+/* 小车中心沿斜面走了 s 米时的画布位置（贴斜面滑动，不滚动） */
+function cartPos(s){
   const g = geom();
   const L = Math.hypot(state.h, state.b);
   const t = Math.max(0, Math.min(1, s / L));
   return { x:g.top.x + (g.br.x-g.top.x)*t, y:g.top.y + (g.br.y-g.top.y)*t };
 }
 
+/* 画带轮子的小车：车身平行于斜面，轮子压在斜面上。
+   「小车」= 平动示意，避免小球让人误以为还有滚动动能 */
+function drawCart(c, cx, cy, th){
+  const m = state.m;
+  const bw = Math.min(30 + Math.cbrt(m)*16, 78);   // 车长
+  const bh = Math.max(14, bw*0.34);                // 车高（车身）
+  const wr = Math.max(5.5, bw*0.12);               // 轮半径
+  c.save();
+  c.translate(cx, cy); c.rotate(th);               // +x = 沿斜面向下
+  /* 车身：底边离斜面一个轮半径 */
+  const yb = -wr;                                  // 车身底边 y
+  c.fillStyle='#ff7b54'; c.strokeStyle='#ffd0c2'; c.lineWidth=1.6;
+  rrect(c, -bw/2, yb-bh, bw, bh, 4); c.fill(); c.stroke();
+  /* 驾驶室（靠上端一侧的小凸台），让车有方向感 */
+  c.fillStyle='#ff9370';
+  rrect(c, -bw/2+3, yb-bh-6, bw*0.38, 6, 2); c.fill(); c.stroke();
+  /* 两个轮子：压在斜面上，加辐条表示这是轮子（车本身仍是滑动） */
+  for(const wx of [-bw*0.30, bw*0.30]){
+    c.beginPath(); c.arc(wx, 0, wr, 0, Math.PI*2);
+    c.fillStyle='#2b343e'; c.fill();
+    c.strokeStyle='#c9d7e6'; c.stroke();
+    c.save(); c.translate(wx,0);
+    /* 辐条随行驶距离转动（纯视觉，物理仍是平动） */
+    c.rotate(state.s*1.2/wr);
+    c.strokeStyle='#8b98a5'; c.lineWidth=1.2;
+    for(let k=0;k<3;k++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(-wr*0.7,0); c.lineTo(wr*0.7,0); c.stroke(); }
+    c.restore();
+  }
+  c.restore();
+}
+function rrect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+
 /* ---------- 派生量 ---------- */
 function derived(){
   const th = Math.atan2(state.h, state.b);
   const L  = Math.hypot(state.h, state.b);
-  const k  = state.roll ? 5/7 : 1;
-  const a  = k * G * Math.sin(th);
+  const a  = G * Math.sin(th);          // 光滑斜面：小车不滚，纯滑动
   const vEnd = Math.sqrt(2*a*L);
   const tEnd = Math.sqrt(2*L/a);
   return { th, L, a, vEnd, tEnd };
 }
 
 /* ---------- 绘制 ---------- */
+/* 拖拽手柄位置（顶点=改高度 h，右下角=改底边 b），及悬停/拖动状态 */
+let hoverHandle = null;   // 'h' | 'b' | null
+let dragging  = null;
+
+function handleSpots(){
+  const g = geom();
+  return { h:{ x:g.top.x, y:g.top.y }, b:{ x:g.br.x, y:g.br.y } };
+}
+function hitHandle(mx,my){
+  const hs = handleSpots();
+  const dh = Math.hypot(mx-hs.h.x, my-hs.h.y);
+  const db = Math.hypot(mx-hs.b.x, my-hs.b.y);
+  if(dh <= 16 && dh <= db) return 'h';
+  if(db <= 16) return 'b';
+  return null;
+}
+
 function draw(){
   ctx.clearRect(0,0,W,H);
   const g = geom(), d = derived();
-  const p = ballPos(state.s);
+  const p = cartPos(state.s);
 
   // 地面
   ctx.strokeStyle='#39434e'; ctx.lineWidth=2;
@@ -242,8 +281,8 @@ function draw(){
   ctx.strokeStyle='#4da3ff'; ctx.lineWidth=2.5;
   ctx.beginPath(); ctx.moveTo(g.top.x,g.top.y); ctx.lineTo(g.br.x,g.groundY); ctx.stroke();
 
-  // 高度标注（左侧竖线 + 双箭头）
-  const hx = g.top.x - 26;
+  // 高度标注（左侧竖线 + 双箭头）；文字右对齐排在竖线左边，画布左缘已留足位置
+  const hx = g.top.x - 30;
   ctx.strokeStyle='#8b98a5'; ctx.lineWidth=1.2; ctx.setLineDash([4,3]);
   ctx.beginPath(); ctx.moveTo(hx,g.top.y); ctx.lineTo(hx,g.groundY); ctx.stroke();
   ctx.setLineDash([]);
@@ -273,40 +312,61 @@ function draw(){
   ctx.fillStyle='#3fb950'; ctx.textAlign='right';
   ctx.fillText(tr('倾角')+' θ = '+deg.toFixed(1)+'°', g.br.x-40, g.groundY-8);
 
-  // 小球
-  const r = 6 + Math.cbrt(state.m)*7;
-  ctx.fillStyle='#ff7b54'; ctx.strokeStyle='#ffd0c2'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  // 小车（带轮子，贴斜面平动）
+  drawCart(ctx, p.x, p.y, d.th);
 
-  // 速度矢量（沿斜面向下）与加速度矢量：两者错开，不叠在一起
+  // 速度/加速度矢量：都沿斜面方向，但起点向斜面「上方」错开，避免与斜面线重合。
+  //   法向取 (nx,ny)=(sinθ,-cosθ)：画布 y 向下，这个方向正好指向斜面「上方」空档，
+  //   把箭头整体抬离斜面线；速度、加速度再彼此错开一档，互不重叠。
   if(state.v > 0.01){
-    const ux = Math.cos(d.th), uy = Math.sin(d.th);           // 沿斜面向下的单位向量
-    const nx = -uy, ny = ux;                                  // 法向（指向斜面下方一侧）
-    const off = 24;                                           // 加速度箭头的错位距离
+    const ux = Math.cos(d.th), uy = Math.sin(d.th);           // 沿斜面向下
+    const nx =  uy, ny = -ux;                                 // 法向（指向斜面上方空档）
+    const vOff = 34;                                          // 速度箭头离斜面线的距离
+    const aOff = 12;                                          // 加速度箭头更贴近线，两者不叠
 
-    // 速度矢量：从球心出发，黄色，标注字号加大
+    // 速度矢量：黄色，起点在车身靠上侧、离开斜面线一段距离
     const len = 34 + state.v * 15;
-    const x2 = p.x + ux*len, y2 = p.y + uy*len;
-    arrow(ctx,p.x,p.y,x2,y2,'#ffb020',9);
-    ctx.fillStyle='#ffb020'; ctx.font='bold 19px ui-monospace,Consolas,monospace';
+    const vx1 = p.x + nx*vOff, vy1 = p.y + ny*vOff;
+    const x2 = vx1 + ux*len, y2 = vy1 + uy*len;
+    arrow(ctx,vx1,vy1,x2,y2,'#ffb020',9);
+    /* 标注放在箭头尾端（起点）上方：那里正处斜面上方的空白区，不会压到斜面线 */
+    ctx.fillStyle='#ffb020'; ctx.font='bold 18px ui-monospace,Consolas,monospace';
     ctx.textAlign='left';
-    ctx.fillText('v = '+state.v.toFixed(2)+' m/s', x2+10, y2+22);
+    ctx.fillText('v = '+state.v.toFixed(2)+' m/s', vx1-6, vy1-14);
 
-    // 加速度矢量：起点沿法向偏移，青色，标注在箭头另一侧
-    const ax1 = p.x + nx*off, ay1 = p.y + ny*off;
+    // 加速度矢量：青色，标注放箭头另一侧（下方），与速度标注分开
+    const ax1 = p.x + nx*aOff, ay1 = p.y + ny*aOff;
     const al  = 26 + d.a*3.2;
     const ax2 = ax1 + ux*al,  ay2 = ay1 + uy*al;
     arrow(ctx,ax1,ay1,ax2,ay2,'#39c5cf',7);
     ctx.fillStyle='#39c5cf'; ctx.font='bold 14px ui-monospace,Consolas,monospace';
     ctx.textAlign='left';
-    ctx.fillText('a = '+d.a.toFixed(2)+' m/s\u00b2', ax2+10, ay2-10);
+    ctx.fillText('a = '+d.a.toFixed(2)+' m/s\u00b2', ax2+10, ay2+18);
+  }
+
+  // 拖拽手柄：顶点（改 h）与右下角（改 b）。悬停/拖动时放大、变色，提示可拖
+  const hs = handleSpots();
+  for(const key of ['h','b']){
+    const spt = hs[key];
+    const on = (hoverHandle===key || dragging===key);
+    ctx.beginPath(); ctx.arc(spt.x, spt.y, on?9:6.5, 0, Math.PI*2);
+    ctx.fillStyle = on ? '#ffb020' : 'rgba(255,176,32,.85)';
+    ctx.fill();
+    ctx.strokeStyle='#04121f'; ctx.lineWidth=2; ctx.stroke();
+  }
+  // 手柄旁的小提示（只在静止待释放时显示，避免运动中标注太挤）
+  if(!state.running && !state.done){
+    ctx.fillStyle='#8b98a5'; ctx.font='12px system-ui,sans-serif';
+    ctx.textAlign='left';
+    ctx.fillText(tr('拖动改高度'), hs.h.x+12, hs.h.y-12);   /* 顶点右上方：三角形外，空白 */
+    ctx.fillText(tr('拖动改底边'), hs.b.x+12, hs.b.y+4);
   }
 
   // 标题栏读数
   ctx.fillStyle='#8b98a5'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
   const st = state.done ? tr('已到达底端')
              : state.running ? tr('运动进行中…')
-             : tr('静止待释放');
+             : (slowFactor>1 ? tr('慢动作')+' \u00d7'+slowFactor+'  ' : '') + tr('静止待释放');
   ctx.fillText(st + '   |   t = ' + simTime.toFixed(2) + ' s', g.padL-24, 26);
 }
 
@@ -328,7 +388,7 @@ function readouts(){
   const s = state.s, v = state.v, m = state.m;
   const L = d.L;
   const dh = (L - s) * Math.sin(d.th);        // 距底端的剩余高度差
-  const Ek = 0.5*m*v*v + (state.roll ? 0.2*m*v*v : 0);   // 滚动时含转动动能
+  const Ek = 0.5*m*v*v;
   const dU = m*G*dh;                          // 尚未释放的重力势能（相对当前位置）
   const U0 = m*G*state.h;                     // 起始总可用势能
   const EpLeft = m*G*(state.h - s*Math.sin(d.th));
@@ -339,10 +399,10 @@ function readouts(){
   document.getElementById('cV').textContent = f(v)+' m/s';
   document.getElementById('cK').textContent = f(Ek)+' J';
   document.getElementById('cU').textContent = f(U0-EpLeft)+' J';
-  document.getElementById('cE').textContent = f(Ek+EpLeft)+' J  ' + tr('(恒定)');
+  document.getElementById('cE').textContent = f(Ek+EpLeft)+' J';
 
-  const eV = state.roll ? Math.sqrt(2*d.a*L) : Math.sqrt(2*G*state.h);
-  const eK = 0.5*m*eV*eV + (state.roll?0.2*m*eV*eV:0);
+  const eV = Math.sqrt(2*G*state.h);
+  const eK = 0.5*m*eV*eV;
   document.getElementById('eS').textContent = f(L)+' m';
   document.getElementById('eV').textContent = f(eV)+' m/s';
   document.getElementById('eK').textContent = f(eK)+' J';
@@ -350,7 +410,7 @@ function readouts(){
   document.getElementById('eE').textContent = f(m*G*state.h)+' J';
 
   document.getElementById('rV').textContent = f(d.vEnd)+' m/s';
-  document.getElementById('rP').textContent = f(0.5*m*d.vEnd*d.vEnd + (state.roll?0.2*m*d.vEnd*d.vEnd:0))+' J';
+  document.getElementById('rP').textContent = f(0.5*m*d.vEnd*d.vEnd)+' J';
   document.getElementById('rH').textContent = f(state.h)+' m';
   document.getElementById('rB').textContent = f(state.b)+' m';
   document.getElementById('rL').textContent = f(L)+' m';
@@ -368,6 +428,8 @@ function loop(ts){
 
   const d = derived();
   if(state.running && !state.done){
+    // 慢动作：把真实时间按倍率缩小后再积分，物理量本身不变，只是动画变慢
+    dt /= slowFactor;
     // 子步长提高精度
     const steps = 8, sub = dt/steps;
     for(let i=0;i<steps;i++){
@@ -382,16 +444,16 @@ function loop(ts){
 }
 
 /* ---------- 对照表：扫一遍不同倾角，数值积分对比解析解 ---------- */
-function simulate(h,b,roll){
+function simulate(h,b){
   const th=Math.atan2(h,b), L=Math.hypot(h,b);
-  const a=(roll?5/7:1)*G*Math.sin(th);
+  const a=G*Math.sin(th);
   let s=0,v=0,t=0; const dt=0.0005;
   while(s<L){ v+=a*dt; s+=v*dt; t+=dt; if(t>60) break; }
   return { th,L,a,v:s>=L?Math.sqrt(2*a*L):v, vSim:v, t };
 }
 
 function buildTable(){
-  const h = state.h, roll = state.roll;
+  const h = state.h;
   const rows = [
     [tr('很缓'), h, h*3.0],
     [tr('中等'), h, h*1.6],
@@ -401,8 +463,8 @@ function buildTable(){
   ];
   let html='';
   for(const [name,hh,bb] of rows){
-    const r = simulate(hh,bb,roll);
-    const vTh = roll ? Math.sqrt(2*(5/7)*G*hh) : Math.sqrt(2*G*hh);
+    const r = simulate(hh,bb);
+    const vTh = Math.sqrt(2*G*hh);
     const dev = (r.vSim - vTh)/vTh*100;
     html += '<tr><td>'+name+'</td><td>'+hh.toFixed(2)+' m</td><td>'+bb.toFixed(2)+' m</td>'
           + '<td>'+(r.th*180/Math.PI).toFixed(1)+'°</td><td>'+r.a.toFixed(2)+'</td>'
@@ -411,8 +473,8 @@ function buildTable(){
   }
   document.getElementById('tbody').innerHTML = html;
 
-  const vCur = state.roll ? Math.sqrt(2*(5/7)*G*h) : Math.sqrt(2*G*h);
-  const cur  = simulate(h, state.b, roll);
+  const vCur = Math.sqrt(2*G*h);
+  const cur  = simulate(h, state.b);
   document.getElementById('thTag').textContent  = tr('当前理论末速度 √(2gh) =')+vCur.toFixed(3)+' m/s';
   document.getElementById('simTag').textContent = tr('当前数值积分结果 =')+cur.vSim.toFixed(3)+' m/s';
 }
@@ -441,11 +503,74 @@ function reset(){
 document.getElementById('btnRelease').onclick = ()=>{ reset(); state.running=true; };
 document.getElementById('btnPause').onclick   = ()=>{ if(!state.done) state.running=!state.running; };
 document.getElementById('btnReset').onclick   = ()=>{ reset(); draw(); readouts(); };
-document.getElementById('ckRoll').onchange    = e=>{ state.roll=e.target.checked; reset(); buildTable(); draw(); readouts(); };
+/* 慢动作：点击循环切换 真实速度 → 5 倍慢 → 10 倍慢；物理计算不变，只放慢动画时间 */
+function syncSlowBtn(){
+  document.getElementById('btnSlow').textContent = tr('慢动作')+' \u00d7'+slowFactor;
+}
+document.getElementById('btnSlow').onclick = ()=>{
+  slowFactor = slowFactor===1 ? 5 : (slowFactor===5 ? 10 : 1);
+  syncSlowBtn(); draw();
+};
 
 bind('hRange','hNum','h',0.2,10);
 bind('bRange','bNum','b',0.5,15);
 bind('mRange','mNum','m',0.1,20);
+
+/* ---------- 画布直接交互 ----------
+   · 悬停到两个黄色圆点（顶点/右下角）变小手，可拖动：上下拖改高度 h，左右拖改底边 b
+     （与右侧滑块、数字框实时联动）
+   · 点击其余区域 = 释放 / 暂停切换（按钮仍保留） */
+function canvasXY(e){
+  const r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left)*W/r.width, y:(e.clientY-r.top)*H/r.height };
+}
+function setHB(h,b){
+  /* 钳到与滑块一致的范围，再走和手动输入相同的通道（含校验、联动、重算） */
+  h = Math.min(10, Math.max(0.2, h)); b = Math.min(15, Math.max(0.5, b));
+  state.h = +h.toFixed(2); state.b = +b.toFixed(2);
+  document.getElementById('hRange').value=state.h; document.getElementById('hNum').value=state.h;
+  document.getElementById('bRange').value=state.b; document.getElementById('bNum').value=state.b;
+  reset(); buildTable(); draw(); readouts();
+}
+cv.addEventListener('pointermove', (e)=>{
+  const {x,y} = canvasXY(e);
+  if(dragging){
+    const g = geom();
+    if(dragging==='h'){
+      /* 地面线固定、顶点跟随手指上下移动：向下拖 = h 变大（直觉一致）。
+         注意 pxPerM 会随 h/b 自动缩放，直接线性换算不跟手；
+         解 newH = (y-padT)*oldScale / availH 可保证新比例尺下顶点正好落在手指处 */
+      const availH = H - g.padT - g.padB;
+      let nh = (y - g.padT) * g.pxPerM / availH;
+      setHB(Math.min(nh, 10), state.b);
+    } else {
+      /* 右下角沿地面线左右拖：向右拖 = b 变大（上限钳到画布内） */
+      let nb = (x - g.top.x)/g.pxPerM;
+      const maxFit = (W - g.padL - 30)/g.pxPerM;
+      setHB(state.h, Math.min(nb, maxFit));
+    }
+    return;
+  }
+  hoverHandle = hitHandle(x,y);
+  cv.style.cursor = hoverHandle ? 'grab' : 'pointer';
+  draw();
+});
+cv.addEventListener('pointerdown', (e)=>{
+  const {x,y} = canvasXY(e);
+  const hit = hitHandle(x,y);
+  if(hit){ dragging = hit; cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing'; draw(); }
+});
+cv.addEventListener('pointerup', (e)=>{
+  const wasDrag = dragging;
+  dragging = null;
+  if(wasDrag){ draw(); return; }        // 拖拽结束：不触发点击释放
+  /* 点空白处 = 释放 / 暂停切换（到达底端后再点则重新释放） */
+  const {x,y} = canvasXY(e);
+  if(hitHandle(x,y)) return;
+  if(state.done){ reset(); state.running=true; }
+  else if(state.running){ state.running=false; }
+  else { reset(); state.running=true; }
+});
 
 /* ---------- 画布自适应（高清屏不糊）---------- */
 function resize(){
@@ -465,8 +590,7 @@ window.addEventListener('resize', resize);
 /* ---------- 启动 ---------- */
 buildTable(); readouts(); resize(); requestAnimationFrame(loop);
 /* 语言变化时：canvas 文字、动态表格、整块注释都必须重画/重写 */
-applyBlocks();
-document.addEventListener('langchange', function(){ buildTable(); readouts(); draw(); applyBlocks(); });
+document.addEventListener('langchange', function(){ buildTable(); readouts(); draw(); syncSlowBtn(); });
 </script>
 </body>
 </html>

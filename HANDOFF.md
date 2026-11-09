@@ -24,7 +24,7 @@
 | 文件 | 内容 |
 |---|---|
 | `index.html` | 首页，四分类：交互模拟(蓝)/题目讲解(红)/演示动画(紫)/视频实验(绿)；粘性导航、Hero、卡片 hover、占位卡 `class="card soon"`；`nTotal` 由 JS 统计 `a.card` 数量 |
-| `incline-energy.html` | Object on Incline · 斜面机械能守恒模拟（原名 momentum-energy-demo.html，已改名）。h/b/m 滑块+数字框联动、释放/暂停/复位、「考虑滚动」(5/7·g·sinθ)、Canvas 标注 h/b/θ、实时读数表、Ek vs mgΔh 对照、底部扫 5 种倾角验证「末速度只取决于高度」。全文无「动量」字样 |
+| `incline-energy.html` | 斜面模型机械能守恒模拟。h/b/m 滑块+数字框联动；**画布上可直接拖拽**：顶点黄点上下拖改 h、右下角黄点左右拖改 b（悬停变小手，与滑块实时联动）；**点画布空白处=释放/暂停切换**（按钮保留）；释放小车/暂停/复位/**慢动作×1→5→10** 四钮；画布上是**带轮子的小车**（已删「考虑滚动」选项与所有小球叙事，避免滞动误解）；Canvas 标注 h/b/θ、速度箭头沿法向抬离斜面线、实时读数表、Ek vs mgΔh 对照、底部扫 5 种倾角验证「末速度只取决于高度」。全文无「动量」字样 |
 | `site-lang.js` | **全站共用中英切换引擎**（见下） |
 | `thumbnails/` | 双语缩略图 `incline-energy-zh.jpg` / `-en.jpg`，由 CDP 真实渲染截图生成 |
 | `tools/` | `cdp_lang_test.py`（点击 EN 并报告残留中文）、`gen_thumbs.py`（生成双语缩略图）、`test_cross_page.py`（跨页语言同步测试） |
@@ -60,10 +60,13 @@
 ## 验证方式（省 token，优先用它而不是反复截图）
 
 ```bash
-# 双语审计（推荐）：查「中文页有无可见英文」+「英文页有无残留中文」
+# 双语审计：查「中文页有无可见英文」+「英文页有无残留中文」
 CDP_PORT=9370 python3 tools/audit_bilingual.py index.html /tmp/out
+# 模拟器交互冒烟测试（拖拽/点击释放/慢动作，14 项断言）
+CDP_PORT=9395 python3 tools/smoke_interact.py
 ```
-判据：ZH 态只剩 `BUTTON: EN`、`GitHub 源码仓库`、含 HTML 字样的页脚说明（均为合理保留）；EN 态只剩 `BUTTON: 中文`。截图看效果用 `/tmp/shot_freeze.py <page> <prefix> <zh|en>`（会冻结动画循环）。
+判据：ZH 态只剩 `BUTTON: EN`、`GitHub 源码仓库`、含 HTML/公式字母的合理保留；EN 态只剩 `BUTTON: 中文`。截图：`/tmp/shot_freeze.py <page> <prefix> <zh|en>`（全页+冻结动画）；缩略图用 `tools/gen_thumbs.py` + PIL 裁 16:10。
+慢动作物理注意：×5 时同一段真实时间内滑行距离是 ×1 的 **1/25**（t² 效应），不是 1/5——写断言时用 25。拖 h 跟手换算：`newH=(y-padT)*pxPerM/availH`（pxPerM 随 h/b 自动缩放，不能线性直算）。
 
 ## 待办 / 下一步候选
 

@@ -94,8 +94,7 @@
     '斜面高度 h（米）': 'Incline height h (m)',
     '斜面底边长 b（米）': 'Incline base b (m)',
     '物体质量 m（千克）': 'Mass m (kg)',
-    '考虑滚动（实心球，等效加速度': 'Rolling (solid sphere, effective acceleration',
-    '释放小球': 'Release',
+    '释放小车': 'Release cart',
     '暂停 / 继续': 'Pause / Resume',
     '复位': 'Reset',
     '底端速度 v': 'Speed at bottom v',
@@ -106,7 +105,7 @@
     '倾角 θ': 'Angle \u03b8',
     '加速度 a': 'Acceleration a',
     '下滑时间 t': 'Travel time t',
-    '实时读数（小球运动过程中）': 'Live readings (during motion)',
+    '实时读数（小车运动过程中）': 'Live readings (during motion)',
     '物理量': 'Quantity',
     '当前值': 'Current',
     '底端时': 'At bottom',
@@ -130,7 +129,9 @@
     '很陡': 'Very steep',
     '当前理论末速度 √(2gh) =': 'Theoretical final speed \u221a(2gh) = ',
     '当前数值积分结果 =': 'Numeric-integration result = ',
-    '(恒定)': '(constant)',
+    '慢动作': 'Slow motion',
+    '拖动改高度': 'drag to change height',
+    '拖动改底边': 'drag to change base',
 
     /* ===== 模拟器：画布文字（Canvas 扫不到，页面用 tr() 取词）===== */
     '静止待释放': 'At rest \u2014 ready to release',
@@ -155,17 +156,12 @@
       en: "Galileo's result: at the same height the final speed is the same for every angle; a steeper slope simply takes less time. "
         + 'The "Simulated" column comes from numerically integrating a = g\u00b7sin\u03b8; agreement with the formula validates the model.',
     },
-    /* 模拟器右侧卡片下方的注释：含「√」与书名号，整块替换最稳 */
-    rollNote: {
-      zh: '注：勾选「考虑滚动」后有一部分能量转为转动动能，末速度会比 √(2gh) 略小，这是真实小球会滚而不滑的情况。',
-      en: 'Note: with rolling enabled some energy becomes rotational kinetic energy, so the final speed falls slightly below \u221a(2gh) \u2014 as a real ball rolls rather than slides.',
-    },
   };
 
   /* 属性类文字：img alt / title / placeholder */
   const ATTRS = {
-    '斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头':
-      'Screenshot of the Object on Incline simulation: a ball sliding down an incline with velocity and acceleration vectors',
+    '斜面模型模拟截图：小车沿斜面下滑，带速度与加速度矢量箭头':
+      'Screenshot of the Object on Incline simulation: a cart sliding down an incline with velocity and acceleration vectors',
   };
 
   /* 标题（<title>）按页面区分 */
