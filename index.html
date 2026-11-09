@@ -69,7 +69,7 @@
   nav{position:sticky;top:0;z-index:9;background:rgba(8,11,16,.86);backdrop-filter:blur(11px);
     border-bottom:1px solid var(--line)}
   .navIn{display:flex;align-items:center;gap:20px;padding:13px 0;flex-wrap:wrap}
-  .logo{font-weight:800;font-size:15.5px;letter-spacing:.02em;text-decoration:none;color:var(--ink)}
+  .logo{font-weight:800;font-size:15.5px;letter-spacing:.02em;text-decoration:none;color:var(--ink);white-space:nowrap}
   .logo i{color:var(--acc);font-style:normal}
   .links{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
   .links a{color:var(--dim);text-decoration:none;font-size:13.5px;padding:7px 12px;border-radius:8px;
@@ -79,6 +79,7 @@
   footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);font-size:13.5px}
   footer a{color:var(--acc);text-decoration:none}
   .note{margin-top:9px;font-size:12.5px;color:#5f6c7a}
+  .lang{margin-left:auto}
 
   @media(max-width:640px){header{padding:48px 0 34px}.links{margin-left:0;width:100%}}
 </style>
@@ -92,6 +93,9 @@
     <a href="#prob">解题 Problems</a>
     <a href="#anim">动画 Animations</a>
     <a href="#vid">视频 Videos</a>
+  </div>
+  <div class="lang">
+    <button data-lang="zh">中文</button><button data-lang="en">EN</button>
   </div>
 </div></div></nav>
 
@@ -198,10 +202,11 @@
 </div></main>
 
 <footer><div class="wrap">
-  <div>物理实验室 · Physics Lab &nbsp;|&nbsp; <a href="https://github.com/blueskyicanfly/project1">GitHub 源码仓库</a></div>
+  <div><span>物理实验室</span> · Physics Lab&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://github.com/blueskyicanfly/project1">GitHub 源码仓库</a></div>
   <div class="note">所有页面为纯静态 HTML，无外部依赖，可离线打开。新资源发布后会自动出现在对应栏目。</div>
 </div></footer>
 
+<script src="site-lang.js"></script>
 <script>
 /* 统计已上线（非占位）的卡片数量，避免手动维护数字 */
 document.getElementById('nTotal').textContent =
