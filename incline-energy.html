@@ -6,8 +6,9 @@
 <title>斜面模型机械能守恒</title>
 <style>
   :root{
-    --bg:#101418; --panel:#1a2027; --line:#2b343e; --ink:#e6edf3;
-    --dim:#8b98a5; --acc:#4da3ff; --vel:#ffb020; --ok:#3fb950; --warn:#f85149;
+    /* 浅色（白底）主题：用户偏好白色背景。深色版变量存档在 git 历史里 */
+    --bg:#f4f6f9; --panel:#ffffff; --line:#d7dee6; --ink:#1c2733;
+    --dim:#5c6b7a; --acc:#1f6feb; --vel:#c07800; --ok:#1a7f37; --warn:#cf222e;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -19,19 +20,19 @@
   .grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}
   @media(max-width:900px){.grid{grid-template-columns:1fr}}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0b0e11}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#ffffff;border:1px solid var(--line)}
   label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
   .row{display:flex;gap:8px;align-items:center}
-  input[type=number]{width:88px;padding:7px 8px;background:#0b0e11;border:1px solid var(--line);
+  input[type=number]{width:88px;padding:7px 8px;background:#ffffff;border:1px solid var(--line);
     border-radius:6px;color:var(--ink);font-size:14px}
   input[type=range]{flex:1;accent-color:var(--acc)}
   .chk{display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:13px;color:var(--ink);line-height:1.45}
   .chk span{flex:1}
   .chk input{width:16px;height:16px;accent-color:var(--acc)}
-  button{padding:9px 14px;background:#22303d;border:1px solid var(--line);border-radius:6px;
+  button{padding:9px 14px;background:#eef2f6;border:1px solid var(--line);border-radius:6px;
     color:var(--ink);font-size:14px;cursor:pointer;font-family:inherit}
-  button:hover{background:#2b3a48}
-  button.pri{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
+  button:hover{background:#e2e8f0}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#ffffff;font-weight:600}
   .btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
@@ -39,11 +40,11 @@
   td.v{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace;text-align:right}
   .big{font-size:22px;color:var(--vel);font-weight:600}
   .sec{margin-top:18px}
-  .formula{background:#0b0e11;border-left:3px solid var(--acc);padding:10px 12px;
+  .formula{background:#f0f4f8;border-left:3px solid var(--acc);padding:10px 12px;
     border-radius:6px;font-size:14px;margin:10px 0}
-  .formula code{font-family:ui-monospace,Consolas,monospace;color:#c9d7e6}
+  .formula code{font-family:ui-monospace,Consolas,monospace;color:#1c2733}
   .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;
-    background:#22303d;color:var(--dim);margin-right:6px}
+    background:#e7edf3;color:var(--dim);margin-right:6px}
   table.data th{padding:6px 5px;text-align:right;font-size:12px}
   table.data td{text-align:right;padding:5px;border-bottom:1px solid var(--line)}
   table.data th:first-child,table.data td:first-child{text-align:left}
@@ -51,10 +52,10 @@
   .note{color:var(--dim);font-size:12px;margin-top:10px}
   .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px}
   .lang{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:999px;
-    overflow:hidden;background:#0b0e11;flex:none}
+    overflow:hidden;background:#ffffff;flex:none}
   .lang button{border:0;background:transparent;color:var(--dim);padding:7px 15px;font-size:13px;
     border-radius:0;cursor:pointer;font-family:inherit}
-  .lang button.on{background:var(--acc);color:#04121f;font-weight:600}
+  .lang button.on{background:var(--acc);color:#ffffff;font-weight:600}
 </style>
 </head>
 <body>
@@ -224,12 +225,12 @@ function drawCart(c, cx, cy, th){
   /* 两个轮子：压在斜面上，加辐条表示这是轮子（车本身仍是滑动） */
   for(const wx of [-bw*0.30, bw*0.30]){
     c.beginPath(); c.arc(wx, 0, wr, 0, Math.PI*2);
-    c.fillStyle='#2b343e'; c.fill();
-    c.strokeStyle='#c9d7e6'; c.stroke();
+    c.fillStyle='#3a4550'; c.fill();
+    c.strokeStyle='#33414f'; c.stroke();
     c.save(); c.translate(wx,0);
     /* 辐条随行驶距离转动（纯视觉，物理仍是平动） */
     c.rotate(state.s*1.2/wr);
-    c.strokeStyle='#8b98a5'; c.lineWidth=1.2;
+    c.strokeStyle='#7c8894'; c.lineWidth=1.2;
     for(let k=0;k<3;k++){ c.rotate(Math.PI/3); c.beginPath(); c.moveTo(-wr*0.7,0); c.lineTo(wr*0.7,0); c.stroke(); }
     c.restore();
   }
@@ -288,27 +289,27 @@ function draw(){
   const p = cartPos(state.s);
 
   // 地面
-  ctx.strokeStyle='#39434e'; ctx.lineWidth=2;
+  ctx.strokeStyle='#9aa7b4'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(g.padL-24,g.groundY); ctx.lineTo(W-g.padR+16,g.groundY); ctx.stroke();
 
   // 斜面（三角形）
-  ctx.fillStyle='rgba(77,163,255,.10)';
+  ctx.fillStyle='rgba(31,111,235,.10)';
   ctx.beginPath();
   ctx.moveTo(g.top.x,g.top.y); ctx.lineTo(g.br.x,g.groundY); ctx.lineTo(g.top.x,g.groundY);
   ctx.closePath(); ctx.fill();
-  ctx.strokeStyle='#4da3ff'; ctx.lineWidth=2.5;
+  ctx.strokeStyle='#1f6feb'; ctx.lineWidth=2.5;
   ctx.beginPath(); ctx.moveTo(g.top.x,g.top.y); ctx.lineTo(g.br.x,g.groundY); ctx.stroke();
 
   // 高度标注（左侧竖线 + 双箭头）；文字右对齐排在竖线左边，画布左缘已留足位置
   const hx = g.top.x - 30;
-  ctx.strokeStyle='#8b98a5'; ctx.lineWidth=1.2; ctx.setLineDash([4,3]);
+  ctx.strokeStyle='#7c8894'; ctx.lineWidth=1.2; ctx.setLineDash([4,3]);
   ctx.beginPath(); ctx.moveTo(hx,g.top.y); ctx.lineTo(hx,g.groundY); ctx.stroke();
   ctx.setLineDash([]);
-  arrow(ctx,hx,g.top.y,hx,g.groundY,'#8b98a5',6);
-  arrow(ctx,hx,g.groundY,hx,g.top.y,'#8b98a5',6);
+  arrow(ctx,hx,g.top.y,hx,g.groundY,'#7c8894',6);
+  arrow(ctx,hx,g.groundY,hx,g.top.y,'#7c8894',6);
   /* 文字排在竖线右侧（三角形内侧）：画布左缘空间有限，放外侧会被裁掉。
      坡很扁时一行放不下，自动拆成三行（斜面高度 / h = x.xx / m），垂直居中对齐竖线 */
-  ctx.fillStyle='#c9d7e6'; ctx.font='13px ui-monospace,Consolas,monospace';
+  ctx.fillStyle='#33414f'; ctx.font='13px ui-monospace,Consolas,monospace';
   ctx.textAlign='left';
   {
     const my_ = (g.top.y+g.groundY)/2;
@@ -330,18 +331,18 @@ function draw(){
   ctx.beginPath(); ctx.moveTo(g.top.x,g.groundY+6); ctx.lineTo(g.top.x,by); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(g.br.x,g.groundY+6); ctx.lineTo(g.br.x,by); ctx.stroke();
   ctx.setLineDash([]);
-  arrow(ctx,g.top.x,by,g.br.x,by,'#8b98a5',6);
-  arrow(ctx,g.br.x,by,g.top.x,by,'#8b98a5',6);
+  arrow(ctx,g.top.x,by,g.br.x,by,'#7c8894',6);
+  arrow(ctx,g.br.x,by,g.top.x,by,'#7c8894',6);
   ctx.textAlign='center';
   ctx.fillText(tr('斜面底边')+' b = '+state.b.toFixed(2)+' m', (g.top.x+g.br.x)/2, by-7);
 
   // 倾角 θ
   const deg = d.th*180/Math.PI;
-  ctx.strokeStyle='#3fb950'; ctx.lineWidth=1.6;
+  ctx.strokeStyle='#1a7f37'; ctx.lineWidth=1.6;
   ctx.beginPath();
   ctx.arc(g.br.x,g.groundY, 34, Math.PI, Math.PI + d.th, true);
   ctx.stroke();
-  ctx.fillStyle='#3fb950'; ctx.textAlign='right';
+  ctx.fillStyle='#1a7f37'; ctx.textAlign='right';
   ctx.fillText(tr('倾角')+' θ = '+deg.toFixed(1)+'°', g.br.x-40, g.groundY-8);
 
   // 小车（带轮子，贴斜面平动）
@@ -360,9 +361,9 @@ function draw(){
     const len = 34 + state.v * 15;
     const vx1 = p.x + nx*vOff, vy1 = p.y + ny*vOff;
     const x2 = vx1 + ux*len, y2 = vy1 + uy*len;
-    arrow(ctx,vx1,vy1,x2,y2,'#ffb020',9);
+    arrow(ctx,vx1,vy1,x2,y2,'#b06e00',9);
     /* 标注放在箭头尾端（起点）上方：那里正处斜面上方的空白区，不会压到斜面线 */
-    ctx.fillStyle='#ffb020'; ctx.font='bold 18px ui-monospace,Consolas,monospace';
+    ctx.fillStyle='#b06e00'; ctx.font='bold 18px ui-monospace,Consolas,monospace';
     ctx.textAlign='left';
     ctx.fillText('v = '+state.v.toFixed(2)+' m/s', vx1-6, vy1-14);
 
@@ -370,8 +371,8 @@ function draw(){
     const ax1 = p.x + nx*aOff, ay1 = p.y + ny*aOff;
     const al  = 26 + d.a*3.2;
     const ax2 = ax1 + ux*al,  ay2 = ay1 + uy*al;
-    arrow(ctx,ax1,ay1,ax2,ay2,'#39c5cf',7);
-    ctx.fillStyle='#39c5cf'; ctx.font='bold 14px ui-monospace,Consolas,monospace';
+    arrow(ctx,ax1,ay1,ax2,ay2,'#0e7f8a',7);
+    ctx.fillStyle='#0e7f8a'; ctx.font='bold 14px ui-monospace,Consolas,monospace';
     ctx.textAlign='left';
     ctx.fillText('a = '+d.a.toFixed(2)+' m/s\u00b2', ax2+10, ay2+18);
   }
@@ -380,7 +381,7 @@ function draw(){
   if(hoverHandle==='cart' || dragging==='cart'){
     const p0 = cartPos(state.s);
     ctx.save(); ctx.translate(p0.x,p0.y); ctx.rotate(d.th);
-    ctx.strokeStyle='#ffb020'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    ctx.strokeStyle='#b06e00'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
     const bw0 = Math.min(30 + Math.cbrt(state.m)*16, 78);
     ctx.strokeRect(-bw0*0.62, -(bw0*0.34+18), bw0*1.24, bw0*0.34+32);
     ctx.setLineDash([]); ctx.restore();
@@ -392,13 +393,13 @@ function draw(){
     const spt = hs[key];
     const on = (hoverHandle===key || dragging===key);
     ctx.beginPath(); ctx.arc(spt.x, spt.y, on?9:6.5, 0, Math.PI*2);
-    ctx.fillStyle = on ? '#ffb020' : 'rgba(255,176,32,.85)';
+    ctx.fillStyle = on ? '#b06e00' : 'rgba(176,110,0,.8)';
     ctx.fill();
-    ctx.strokeStyle='#04121f'; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke();
   }
   // 手柄旁的小提示（只在静止待释放时显示，避免运动中标注太挤）
   if(!state.running && !state.done){
-    ctx.fillStyle='#8b98a5'; ctx.font='12px system-ui,sans-serif';
+    ctx.fillStyle='#7c8894'; ctx.font='12px system-ui,sans-serif';
     ctx.textAlign='left';
     ctx.fillText(tr('拖动改高度'), hs.h.x+12, hs.h.y-12);   /* 顶点右上方：三角形外，空白 */
     ctx.fillText(tr('拖动改底边'), hs.b.x+12, hs.b.y+4);
@@ -408,7 +409,7 @@ function draw(){
   }
 
   // 标题栏读数
-  ctx.fillStyle='#8b98a5'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
+  ctx.fillStyle='#7c8894'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
   const st = state.done ? tr('已到达底端')
              : state.running ? tr('运动进行中…')
              : (slowFactor>1 ? tr('慢动作')+' \u00d7'+slowFactor+'  ' : '') + tr('静止待释放');
@@ -622,11 +623,13 @@ cv.addEventListener('pointerup', (e)=>{
   const wasDrag = dragging;
   dragging = null;
   if(wasDrag){ draw(); return; }        // 拖拽结束：不触发点击释放
-  /* 点空白处 = 释放 / 暂停切换（到达底端后再点则重新释放） */
+  /* 点空白处四态：静止→释放；跑着→暂停；暂停中→继续（从停住处接着跑，不清零）；
+     到底后→重新释放。之前「暂停后再点」误走 else 分支 reset()，小车被弹回坡顶 */
   const {x,y} = canvasXY(e);
   if(hitHandle(x,y)) return;
   if(state.done){ reset(); state.running=true; }
   else if(state.running){ state.running=false; }
+  else if(state.s > 0){ state.running = true; }    // 暂停中：继续，不重置
   else { reset(); state.running=true; }
 });
 

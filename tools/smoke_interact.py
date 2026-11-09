@@ -130,6 +130,27 @@ def main():
         vB = float(ev("state.v"))
         check('再点画布=暂停（速度不再变化）', abs(vA-vB) < 1e-9, (vA, vB))
 
+        # 第三次点 = 继续：小车从停住处接着加速，位置不清零
+        s_paused = float(ev("state.s"))
+        HPT = json.loads(ws.ev("JSON.stringify((function(){const r=cv.getBoundingClientRect();return {x:r.left+r.width*0.85,y:r.top+r.height*0.12}})())"))
+        cdp_mouse(ws, "mousePressed", HPT['x'], HPT['y'], button="left", click_count=1)
+        cdp_mouse(ws, "mouseReleased", HPT['x'], HPT['y'], button="left")
+        time.sleep(0.6)
+        run3 = ev("state.running")
+        v3 = float(ev("state.v")); s3 = float(ev("state.s"))
+        check('三点画布=继续（running 恢复且速度增大）', run3 and v3 > vB, (run3, vB, v3))
+        check('继续时位置不清零（s 只增不减）', s3 >= s_paused, (s_paused, s3))
+
+        # 到底后再点 = 重新释放：先让车跑到底（done），点击后应从头再跑
+        ws.ev("state.s = Math.hypot(state.b,state.h) - 0.01; state.running=true")
+        time.sleep(1.2)
+        done_now = ev("state.done")
+        cdp_mouse(ws, "mousePressed", HPT['x'], HPT['y'], button="left", click_count=1)
+        cdp_mouse(ws, "mouseReleased", HPT['x'], HPT['y'], button="left")
+        time.sleep(0.4)
+        s_re = float(ev("state.s")); run_re = ev("state.running"); done_re = ev("state.done")
+        check('到底后再点=重新释放（从头再跑）', bool(done_now) and (not done_re) and bool(run_re) and s_re < 0.5, (done_now, done_re, round(s_re,3)))
+
         # ---- 6. 慢动作滑块：对数刻度，拖到 log10(5)≈×5、log10(10)=×10，读数联动 ----
         def set_slow(t):
             ws.ev("document.getElementById('slowRange').value=%r; slowFromSlider();" % t)
