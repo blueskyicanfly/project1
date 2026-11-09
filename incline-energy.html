@@ -172,23 +172,22 @@ let W = cv.width, H = cv.height;
 
 /* ---------- 几何：把物理量换算成画布坐标 ---------- */
 function geom(){
-  /* 左边距留足：高度标注线在顶点左侧 30px，文字再往左排（右对齐），
-     约需 120px；之前只留 58px，「斜面高度 h = x.xx m」整截被裁在画布外 */
-  const padL=128, padR=76, padT=64, padB=92;
-  const availW = W - padL - padR;
-  const availH = H - padT - padB;
+  /* 三角形包围盒始终在画布正中：h/b 怎么变，图形都不会整体偏走。
+     四周留一圈空隙给标注文字（地面线延伸、θ、状态栏等）。 */
+  const margin = 46;
+  const availW = W - margin*2, availH = H - margin*2;
 
-  const scale = Math.min(availW / state.b, availH / state.h);
-  const pxPerM = Math.max(scale, 1);
+  const pxPerM = Math.max(Math.min(availW / state.b, availH / state.h), 1);
+  const triW = state.b * pxPerM, triH = state.h * pxPerM;
 
-  const groundY = padT + state.h * pxPerM;         // 底边所在的水平线
-  const originX = padL;                            // 斜面顶端（小车起点，也是拖拽手柄）
+  const originX = (W - triW) / 2;                  // 水平居中
+  const groundY = (H + triH) / 2;                  // 垂直居中：底边 y
 
   return {
-    pxPerM, groundY,
-    top:{ x:originX, y:padT },
-    br :{ x:originX + state.b*pxPerM, y:groundY }, // 斜面底端（也是拖拽手柄）
-    padL, padR, padT, padB
+    pxPerM, groundY, triW, triH,
+    top:{ x:originX, y:groundY - triH },           // 斜面顶端（小车起点，也是拖拽手柄）
+    br :{ x:originX + triW, y:groundY },           // 斜面底端（也是拖拽手柄）
+    padL:margin, padR:margin, padT:margin, padB:margin   // 供地面线延伸/状态栏沿用
   };
 }
 
@@ -255,6 +254,19 @@ function handleSpots(){
   const g = geom();
   return { h:{ x:g.top.x, y:g.top.y }, b:{ x:g.br.x, y:g.br.y } };
 }
+/* 命中小车车身/轮子区域（矩形近似：以车中心为界 ±车长一半、±(车高+轮半径)） */
+function hitCart(mx,my){
+  if(state.done) return false;               // 到终点后小车不抓，点画布=重新释放
+  const p = cartPos(state.s), d = derived();
+  const bw = Math.min(30 + Math.cbrt(state.m)*16, 78);
+  /* 把鼠标点换算到车身坐标系（沿斜面 u / 法向 w） */
+  const c = Math.cos(d.th), s = Math.sin(d.th);
+  const rx = mx-p.x, ry = my-p.y;
+  const u =  rx*c + ry*s;                    // 沿斜面方向
+  const w = -rx*s + ry*c;                    // 法向（指向斜面上方为正）
+  return Math.abs(u) <= bw*0.62 && w >= -14 && w <= bw*0.34 + 18;
+}
+
 function hitHandle(mx,my){
   const hs = handleSpots();
   const dh = Math.hypot(mx-hs.h.x, my-hs.h.y);
@@ -288,9 +300,23 @@ function draw(){
   ctx.setLineDash([]);
   arrow(ctx,hx,g.top.y,hx,g.groundY,'#8b98a5',6);
   arrow(ctx,hx,g.groundY,hx,g.top.y,'#8b98a5',6);
+  /* 文字排在竖线右侧（三角形内侧）：画布左缘空间有限，放外侧会被裁掉。
+     坡很扁时一行放不下，自动拆成三行（斜面高度 / h = x.xx / m），垂直居中对齐竖线 */
   ctx.fillStyle='#c9d7e6'; ctx.font='13px ui-monospace,Consolas,monospace';
-  ctx.textAlign='right';
-  ctx.fillText(tr('斜面高度')+' h = '+state.h.toFixed(2)+' m', hx-6, (g.top.y+g.groundY)/2);
+  ctx.textAlign='left';
+  {
+    const my_ = (g.top.y+g.groundY)/2;
+    const line1 = tr('斜面高度'), line2 = 'h = '+state.h.toFixed(2), line3 = 'm';
+    const wAvail = g.br.x - hx - 14;                 // 竖线到三角形右角的可用宽
+    const oneLine = line1+' '+line2+' '+line3;
+    if(ctx.measureText(oneLine).width <= wAvail){
+      ctx.fillText(oneLine, hx+8, my_);
+    } else {
+      ctx.fillText(line1, hx+8, my_-15);
+      ctx.fillText(line2, hx+8, my_);
+      ctx.fillText(line3, hx+8, my_+15);
+    }
+  }
 
   // 底边标注
   const by = g.groundY + 30;
@@ -344,6 +370,16 @@ function draw(){
     ctx.fillText('a = '+d.a.toFixed(2)+' m/s\u00b2', ax2+10, ay2+18);
   }
 
+  // 悬停在小车上：给车身加一圈黄色描边，提示「可以抓着它上下拽改高度」
+  if(hoverHandle==='cart' || dragging==='cart'){
+    const p0 = cartPos(state.s);
+    ctx.save(); ctx.translate(p0.x,p0.y); ctx.rotate(d.th);
+    ctx.strokeStyle='#ffb020'; ctx.lineWidth=2; ctx.setLineDash([5,4]);
+    const bw0 = Math.min(30 + Math.cbrt(state.m)*16, 78);
+    ctx.strokeRect(-bw0*0.62, -(bw0*0.34+18), bw0*1.24, bw0*0.34+32);
+    ctx.setLineDash([]); ctx.restore();
+  }
+
   // 拖拽手柄：顶点（改 h）与右下角（改 b）。悬停/拖动时放大、变色，提示可拖
   const hs = handleSpots();
   for(const key of ['h','b']){
@@ -360,6 +396,9 @@ function draw(){
     ctx.textAlign='left';
     ctx.fillText(tr('拖动改高度'), hs.h.x+12, hs.h.y-12);   /* 顶点右上方：三角形外，空白 */
     ctx.fillText(tr('拖动改底边'), hs.b.x+12, hs.b.y+4);
+    ctx.textAlign='right';
+    ctx.fillText(tr('抓小车上下拖也改高度'), hs.h.x-40, hs.h.y+34);
+    ctx.textAlign='left';
   }
 
   // 标题栏读数
@@ -527,38 +566,45 @@ function canvasXY(e){
 function setHB(h,b){
   /* 钳到与滑块一致的范围，再走和手动输入相同的通道（含校验、联动、重算） */
   h = Math.min(10, Math.max(0.2, h)); b = Math.min(15, Math.max(0.5, b));
-  state.h = +h.toFixed(2); state.b = +b.toFixed(2);
+  state.h = +h.toFixed(3); state.b = +b.toFixed(3);
   document.getElementById('hRange').value=state.h; document.getElementById('hNum').value=state.h;
   document.getElementById('bRange').value=state.b; document.getElementById('bNum').value=state.b;
   reset(); buildTable(); draw(); readouts();
 }
+function hitAny(mx,my){
+  /* 小车在坡顶时常压住顶点黄点：优先判小车，保证「抓车」手感一致 */
+  if(hitCart(mx,my)) return 'cart';
+  return hitHandle(mx,my);
+}
+
 cv.addEventListener('pointermove', (e)=>{
   const {x,y} = canvasXY(e);
   if(dragging){
-    const g = geom();
-    if(dragging==='h'){
-      /* 地面线固定、顶点跟随手指上下移动：向下拖 = h 变大（直觉一致）。
-         注意 pxPerM 会随 h/b 自动缩放，直接线性换算不跟手；
-         解 newH = (y-padT)*oldScale / availH 可保证新比例尺下顶点正好落在手指处 */
-      const availH = H - g.padT - g.padB;
-      let nh = (y - g.padT) * g.pxPerM / availH;
-      setHB(Math.min(nh, 10), state.b);
+    /* 拖拽期间画面会重居中（geom 自动做），所以不能拿当前帧像素硬算，
+       改用「按下时的比例尺 + 手指位移量」换算，手感稳定不漂移 */
+    const g0 = dragBase.g, dx = x - dragBase.x, dy = y - dragBase.y;
+    if(dragging==='h' || dragging==='cart'){
+      /* 抓住小车/顶点上下拽：往上拽(h 手柄上移)=坡变高，往下拽=坡变矮；b 不变。
+         三角形垂直居中后，顶点上移 Δy 对应 h 增加 Δy/pxPerM（比例尺按下时锁定） */
+      setHB(state.h - dy/g0.pxPerM, state.b);
     } else {
-      /* 右下角沿地面线左右拖：向右拖 = b 变大（上限钳到画布内） */
-      let nb = (x - g.top.x)/g.pxPerM;
-      const maxFit = (W - g.padL - 30)/g.pxPerM;
-      setHB(state.h, Math.min(nb, maxFit));
+      /* 右下角左右拖：改底边 b，h 不变 */
+      setHB(state.h, state.b + dx/g0.pxPerM);
     }
     return;
   }
-  hoverHandle = hitHandle(x,y);
+  hoverHandle = hitAny(x,y);
   cv.style.cursor = hoverHandle ? 'grab' : 'pointer';
   draw();
 });
+let dragBase = null;   // 按下瞬间的 {g,x,y}，拖拽按位移增量换算
 cv.addEventListener('pointerdown', (e)=>{
   const {x,y} = canvasXY(e);
-  const hit = hitHandle(x,y);
-  if(hit){ dragging = hit; cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing'; draw(); }
+  const hit = hitAny(x,y);                  // 抓小车/顶点手柄 = 上下拽改高度
+  if(hit){
+    dragging = hit; dragBase = { g:geom(), x, y };
+    cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing'; draw();
+  }
 });
 cv.addEventListener('pointerup', (e)=>{
   const wasDrag = dragging;

@@ -132,6 +132,7 @@
     '慢动作': 'Slow motion',
     '拖动改高度': 'drag to change height',
     '拖动改底边': 'drag to change base',
+    '抓小车上下拖也改高度': 'grab the cart to drag height',
 
     /* ===== 模拟器：画布文字（Canvas 扫不到，页面用 tr() 取词）===== */
     '静止待释放': 'At rest \u2014 ready to release',

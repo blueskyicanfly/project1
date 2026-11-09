@@ -55,10 +55,11 @@ def main():
         time.sleep(0.3)
         hv = ev("hoverHandle")
         cur = ev("cv.style.cursor")
-        check('悬停顶点手柄 hoverHandle=h', hv == 'h', hv)
+        # 默认 h=3,b=4 时小车停在坡顶、正好压住顶点黄点：命中优先判给小车（两者都是改 h，行为一致）
+        check('悬停顶点/小车 hoverHandle∈{h,cart}', hv in ('h','cart'), hv)
         check('光标变小手 grab', cur == 'grab', cur)
 
-        # ---- 3. 拖动顶点向下 120px：h 应变大 ----
+        # ---- 3. 拖动顶点向下 120px：h 应变小（把坡往下拽塌）----
         h_before = json.loads(ev("JSON.stringify(state.h)"))
         cdp_mouse(ws, "mousePressed", px, py, button="left", click_count=1)
         for i in range(1, 7):
@@ -68,7 +69,7 @@ def main():
         time.sleep(0.4)
         h_after = float(ev("state.h"))
         hnum = ev("document.getElementById('hNum').value")
-        check('向下拖 h 变大', h_after > h_before, '%s -> %s' % (h_before, h_after))
+        check('向下拽 h 变小（底边不变）', h_after < h_before, '%s -> %s' % (h_before, h_after))
         check('数字框与滑块联动', abs(float(hnum) - h_after) < 0.05, hnum)
 
         # ---- 4. 悬停右下角手柄并右拖：b 变大 ----
@@ -87,6 +88,29 @@ def main():
         time.sleep(0.4)
         b_after = float(ev("state.b"))
         check('向右拖 b 变大', b_after > b_before, '%s -> %s' % (b_before, b_after))
+
+        # ---- 4b. 悬停小车本体：变小手，抓着上下拽同样改 h（往下拽 h 变小）----
+        # 先把 h/b 复位到默认值再测抓车（前面拖拽已把 h 拉到极值、车贴住顶点手柄）
+        ws.ev("setHB(3,4)")
+        cp = ev("JSON.stringify((function(){const p=cartPos(state.s),r=cv.getBoundingClientRect();return {x:p.x,y:p.y,cx:r.left,cy:r.top,sc:r.width/W}})())")
+        CP = json.loads(cp)
+        ccx, ccy = CP['cx']+CP['x']*CP['sc'], CP['cy']+CP['y']*CP['sc']
+        cdp_mouse(ws, "mouseMoved", ccx, ccy); time.sleep(0.3)
+        check('悬停小车 hoverHandle=cart 且变小手', ev("hoverHandle")=='cart' and ev("cv.style.cursor")=='grab', (ev("hoverHandle"), ev("cv.style.cursor")))
+        h_c_before = float(ev("state.h")); b_c_before = float(ev("state.b"))
+        cdp_mouse(ws, "mousePressed", ccx, ccy, button="left", click_count=1)
+        for i in range(1, 6):
+            cdp_mouse(ws, "mouseMoved", ccx, ccy + i*25, button="left"); time.sleep(0.05)
+        cdp_mouse(ws, "mouseReleased", ccx, ccy+125, button="left")
+        time.sleep(0.4)
+        h_c_after = float(ev("state.h")); b_c_after = float(ev("state.b"))
+        check('抓小车往下拽 h 变小', h_c_after < h_c_before, '%s -> %s' % (h_c_before, h_c_after))
+        check('抓小车拽时 b 不变', abs(b_c_after-b_c_before) < 1e-6, (b_c_before, b_c_after))
+
+        # ---- 4c. 图形居中：三角形包围盒中心 ≈ 画布中心 ----
+        ctr = ev("JSON.stringify((function(){const g=geom();return {cx:(g.top.x+g.br.x)/2, cy:(g.top.y+g.groundY)/2, W:W, H:H}})())")
+        C = json.loads(ctr)
+        check('三角形中心≈画布中心', abs(C['cx']-C['W']/2)<2 and abs(C['cy']-C['H']/2)<2, (round(C['cx']),round(C['W']/2),round(C['cy']),round(C['H']/2)))
 
         # ---- 5. 点画布空白处 = 释放；再点 = 暂停 ----
         cx0, cy0 = P2['cx'] + 60*P2['sc'], P2['cy'] + 60*P2['sc']   # 画布左上空白区
