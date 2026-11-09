@@ -219,12 +219,13 @@
   function injectStyle() {
     if (document.getElementById('site-lang-style')) return;
     const css = [
-      '.lang{display:inline-flex;border:1px solid #232e3a;border-radius:999px;overflow:hidden;background:#0b0e11;flex:none}',
-      '.lang button{border:0;background:transparent;color:#8a97a6;padding:7px 15px;font-size:13px;',
+      '.lang{display:inline-flex;border:1px solid #d3dae2;border-radius:999px;overflow:hidden;background:#ffffff;flex:none}',
+      '.lang button{border:0;background:transparent;color:#3d4b5c;padding:7px 15px;font-size:13px;',
       '  border-radius:0;cursor:pointer;font-family:inherit;line-height:1.4}',
-      '.lang button.on{background:#4da3ff;color:#04121f;font-weight:600}',
+      '.lang button:hover{color:#1f6feb}',
+      '.lang button.on{background:#1f6feb;color:#ffffff;font-weight:600}',
       '.lang-float{position:fixed;top:14px;right:16px;z-index:9999;',
-      '  background:rgba(8,11,16,.85);backdrop-filter:blur(8px);border-radius:999px;padding:3px}',
+      '  background:rgba(255,255,255,.85);backdrop-filter:blur(8px);border-radius:999px;padding:3px}',
     ].join('\n');
     const s = document.createElement('style');
     s.id = 'site-lang-style';
