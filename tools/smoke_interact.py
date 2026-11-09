@@ -62,17 +62,19 @@ def main():
         # ---- 3. 拖动顶点向下 120px：h 应变小（把坡往下拽塌）----
         h_before = json.loads(ev("JSON.stringify(state.h)"))
         cdp_mouse(ws, "mousePressed", px, py, button="left", click_count=1)
-        for i in range(1, 7):
+        for i in range(1, 5):
             cdp_mouse(ws, "mouseMoved", px, py + i*20, button="left")
             time.sleep(0.05)
-        cdp_mouse(ws, "mouseReleased", px, py + 120, button="left")
+        cdp_mouse(ws, "mouseReleased", px, py + 80, button="left")
         time.sleep(0.4)
         h_after = float(ev("state.h"))
         hnum = ev("document.getElementById('hNum').value")
         check('向下拽 h 变小（底边不变）', h_after < h_before, '%s -> %s' % (h_before, h_after))
         check('数字框与滑块联动', abs(float(hnum) - h_after) < 0.05, hnum)
 
-        # ---- 4. 悬停右下角手柄并右拖：b 变大 ----
+        # ---- 4. 悬停右下角手柄并右拖：b 变大（先复位，前面拖拽已把 h/b 拉偏）----
+        ws.ev("setHB(3,4)")
+        time.sleep(0.2)
         pos2 = ev("JSON.stringify((function(){const g=geom();return {x:g.br.x,y:g.br.y,cx:cv.getBoundingClientRect().left,cy:cv.getBoundingClientRect().top,sc:cv.getBoundingClientRect().width/W}})())")
         P2 = json.loads(pos2)
         bx, by = P2['cx'] + P2['x']*P2['sc'], P2['cy'] + P2['y']*P2['sc'] - 3   # 手柄中心附近（文字在其右侧）
@@ -99,9 +101,9 @@ def main():
         check('悬停小车 hoverHandle=cart 且变小手', ev("hoverHandle")=='cart' and ev("cv.style.cursor")=='grab', (ev("hoverHandle"), ev("cv.style.cursor")))
         h_c_before = float(ev("state.h")); b_c_before = float(ev("state.b"))
         cdp_mouse(ws, "mousePressed", ccx, ccy, button="left", click_count=1)
-        for i in range(1, 6):
-            cdp_mouse(ws, "mouseMoved", ccx, ccy + i*25, button="left"); time.sleep(0.05)
-        cdp_mouse(ws, "mouseReleased", ccx, ccy+125, button="left")
+        for i in range(1, 5):
+            cdp_mouse(ws, "mouseMoved", ccx, ccy + i*15, button="left"); time.sleep(0.05)
+        cdp_mouse(ws, "mouseReleased", ccx, ccy+60, button="left")
         time.sleep(0.4)
         h_c_after = float(ev("state.h")); b_c_after = float(ev("state.b"))
         check('抓小车往下拽 h 变小', h_c_after < h_c_before, '%s -> %s' % (h_c_before, h_c_after))
@@ -111,6 +113,33 @@ def main():
         ctr = ev("JSON.stringify((function(){const g=geom();return {cx:(g.top.x+g.br.x)/2, cy:(g.top.y+g.groundY)/2, W:W, H:H}})())")
         C = json.loads(ctr)
         check('三角形中心≈画布中心', abs(C['cx']-C['W']/2)<2 and abs(C['cy']-C['H']/2)<2, (round(C['cx']),round(C['W']/2),round(C['cy']),round(C['H']/2)))
+
+        # ---- 4e. 拖 h 时底边绝不变长/平移：br.x 与 groundY 恒定；且跟手比例≈1:1 ----
+        ws.ev("setHB(3,4)")
+        g_before = json.loads(ev("JSON.stringify((function(){const g=geom();return {x:g.br.x,y:g.groundY,p:g.pxPerM}})())"))
+        hp = ev("""JSON.stringify((function(){const p=cartPos(0),d=derived(),r=cv.getBoundingClientRect();
+          const bw=Math.min(30+Math.cbrt(state.m)*16,78);   // 车身下缘贴斜面处（与 pointerdown 锚点一致）
+          const ax=p.x-Math.sin(d.th)*(bw*0.34+6), ay=p.y+Math.cos(d.th)*(bw*0.34+6);
+          return {x:ax,y:ay,cx:r.left,cy:r.top,sc:r.width/W}})())""")
+        HP = json.loads(hp)
+        hpx, hpy = HP['cx']+HP['x']*HP['sc'], HP['cy']+HP['y']*HP['sc']
+        h_before2 = float(ev("state.h"))
+        cdp_mouse(ws, "mousePressed", hpx, hpy, button="left", click_count=1)
+        for i in range(1, 5):
+            cdp_mouse(ws, "mouseMoved", hpx, hpy + i*30, button="left"); time.sleep(0.05)
+            if i == 2:   # dy=60 当场读数（再往后可能触底钳位，干扰跟手判定）
+                g_mid = json.loads(ev("JSON.stringify((function(){const g=geom();return {x:g.br.x,y:g.groundY}})())"))
+                h_mid = float(ev("state.h"))
+        mid_dy = 60
+        cdp_mouse(ws, "mouseReleased", hpx, hpy+120, button="left")
+        time.sleep(0.3)
+        check('拖 h 时底边右角 x 不动', abs(g_mid['x']-g_before['x']) < 0.5, (round(g_before['x'],1), round(g_mid['x'],1)))
+        ctr_mid = json.loads(ev("JSON.stringify((function(){const g=geom();return {cx:(g.top.x+g.br.x)/2,cy:(g.top.y+g.groundY)/2,W:W,H:H}})())"))
+        check('拖 h 中三角形中心恒居中（不偏走）', abs(ctr_mid['cx']-ctr_mid['W']/2)<2 and abs(ctr_mid['cy']-ctr_mid['H']/2)<2, (round(ctr_mid['cx']),round(ctr_mid['cy']),ctr_mid['W'],ctr_mid['H']))
+        # 跟手：1:1 —— 手指下移 dy(px)，坡高变化 = dy/pxPerM（比例尺固定）
+        exp_dh = mid_dy/HP['sc']/g_before['p']
+        got_dh = h_before2 - h_mid
+        check('拖拽跟手比例≈1:1', abs(got_dh-exp_dh)/exp_dh < 0.15, (round(exp_dh,3), round(got_dh,3)))
 
         # ---- 5. 点画布空白处 = 释放；再点 = 暂停 ----
         cx0, cy0 = P2['cx'] + 60*P2['sc'], P2['cy'] + 60*P2['sc']   # 画布左上空白区
