@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>机械能守恒与动量模拟 · 斜面下滑</title>
+<title>Object on Incline · 斜面模型机械能守恒</title>
 <style>
   :root{
     --bg:#101418; --panel:#1a2027; --line:#2b343e; --ink:#e6edf3;
@@ -25,7 +25,8 @@
   input[type=number]{width:88px;padding:7px 8px;background:#0b0e11;border:1px solid var(--line);
     border-radius:6px;color:var(--ink);font-size:14px}
   input[type=range]{flex:1;accent-color:var(--acc)}
-  .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--ink)}
+  .chk{display:flex;align-items:flex-start;gap:8px;margin-top:14px;font-size:13px;color:var(--ink);line-height:1.45}
+  .chk span{flex:1}
   .chk input{width:16px;height:16px;accent-color:var(--acc)}
   button{padding:9px 14px;background:#22303d;border:1px solid var(--line);border-radius:6px;
     color:var(--ink);font-size:14px;cursor:pointer;font-family:inherit}
@@ -52,7 +53,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>机械能守恒与动量演示 · 小球沿斜面下滑</h1>
+  <h1>Object on Incline · 斜面模型机械能守恒</h1>
   <div class="sub">光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量</div>
 
   <div class="grid">
@@ -61,7 +62,7 @@
       <canvas id="cv" width="760" height="470"></canvas>
       <div class="formula">
         下滑加速度 <code>a = g·sinθ</code>　沿斜面位移 <code>L = √(h² + b²)</code><br>
-        底端速度 <code>v = √(2gh)</code>　动量大小 <code>p = m·v</code>
+        底端速度 <code>v = √(2gh)</code>　动能 <code>Ek = ½mv²</code>　减少的势能 <code>= mgh</code>
       </div>
       <div class="btns">
         <button class="pri" id="btnRelease">释放小球</button>
@@ -84,17 +85,17 @@
         <input type="number" id="bNum" min="0.5" max="15" step="0.1" value="4">
       </div>
 
-      <label>小球质量 m（千克）</label>
+      <label>物体质量 m（千克）</label>
       <div class="row">
         <input type="range" id="mRange" min="0.5" max="10" step="0.1" value="2">
         <input type="number" id="mNum" min="0.1" max="20" step="0.1" value="2">
       </div>
 
-      <label class="chk"><input type="checkbox" id="ckRoll">考虑滚动（实心球，等效加速度 5/7·g·sinθ）</label>
+      <label class="chk"><input type="checkbox" id="ckRoll"><span>考虑滚动（实心球，等效加速度 <code>5/7·g·sinθ</code>）</span></label>
 
       <table>
         <tr><th>底端速度 v</th><td class="v big" id="rV">—</td></tr>
-        <tr><th>动量大小 p = mv</th><td class="v" id="rP">—</td></tr>
+        <tr><th>动能 Ek = ½mv²</th><td class="v" id="rP">—</td></tr>
         <tr><th>斜面高度 h</th><td class="v" id="rH">—</td></tr>
         <tr><th>斜面底边 b</th><td class="v" id="rB">—</td></tr>
         <tr><th>斜面长度 L（斜边）</th><td class="v" id="rL">—</td></tr>
@@ -118,7 +119,6 @@
       <tr><td>动能 Ek = ½mv²</td><td class="v" id="cK">—</td><td class="v" id="eK">—</td></tr>
       <tr><td>减少的重力势能 mgΔh</td><td class="v" id="cU">—</td><td class="v" id="eU">—</td></tr>
       <tr><td>机械能合计 Ek + 剩余Ep</td><td class="v" id="cE">—</td><td class="v" id="eE">—</td></tr>
-      <tr><td>动量 p = mv</td><td class="v" id="cP">—</td><td class="v" id="eP">—</td></tr>
     </table>
     <div class="note">最右两列若始终相等（Ek 增加量 = Ep 减少量），即验证了机械能守恒。</div>
   </div>
@@ -303,7 +303,6 @@ function readouts(){
   document.getElementById('cK').textContent = f(Ek)+' J';
   document.getElementById('cU').textContent = f(U0-EpLeft)+' J';
   document.getElementById('cE').textContent = f(Ek+EpLeft)+' J  (恒定)';
-  document.getElementById('cP').textContent = f(m*v)+' kg·m/s';
 
   const eV = state.roll ? Math.sqrt(2*d.a*L) : Math.sqrt(2*G*state.h);
   const eK = 0.5*m*eV*eV + (state.roll?0.2*m*eV*eV:0);
@@ -312,10 +311,9 @@ function readouts(){
   document.getElementById('eK').textContent = f(eK)+' J';
   document.getElementById('eU').textContent = f(m*G*state.h)+' J';
   document.getElementById('eE').textContent = f(m*G*state.h)+' J';
-  document.getElementById('eP').textContent = f(m*eV)+' kg·m/s';
 
   document.getElementById('rV').textContent = f(d.vEnd)+' m/s';
-  document.getElementById('rP').textContent = f(m*d.vEnd)+' kg·m/s';
+  document.getElementById('rP').textContent = f(0.5*m*d.vEnd*d.vEnd + (state.roll?0.2*m*d.vEnd*d.vEnd:0))+' J';
   document.getElementById('rH').textContent = f(state.h)+' m';
   document.getElementById('rB').textContent = f(state.b)+' m';
   document.getElementById('rL').textContent = f(L)+' m';

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物理实验室 · Physics Lab</title>
+<meta name="description" content="交互模拟、题目讲解、动画演示与视频实验 —— 物理教学资源集">
+<style>
+  :root{
+    --bg:#080b10; --panel:#11161d; --card:#151c25; --line:#232e3a;
+    --ink:#e9eff6; --dim:#8a97a6; --acc:#4da3ff; --gold:#ffb020;
+    --sim:#4da3ff; --prob:#f85149; --anim:#a371f7; --vid:#3fb950;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;
+    font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+    background-image:radial-gradient(1100px 520px at 12% -8%,rgba(77,163,255,.13),transparent 60%),
+                     radial-gradient(900px 460px at 88% 4%,rgba(163,113,247,.10),transparent 60%)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 22px}
+
+  /* ---------- Hero ---------- */
+  header{padding:74px 0 46px;border-bottom:1px solid var(--line)}
+  .kicker{display:inline-block;font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--acc);border:1px solid rgba(77,163,255,.35);border-radius:999px;padding:6px 14px;
+    background:rgba(77,163,255,.08)}
+  h1{font-size:clamp(30px,5.4vw,52px);line-height:1.14;margin:20px 0 12px;font-weight:800;letter-spacing:-.01em}
+  h1 .en{display:block;font-size:.44em;font-weight:500;color:var(--dim);letter-spacing:.06em;margin-top:10px}
+  .lead{color:var(--dim);font-size:clamp(15px,2vw,18px);max-width:660px;margin:0}
+  .stats{display:flex;gap:30px;flex-wrap:wrap;margin-top:30px}
+  .stat b{display:block;font-size:24px;color:var(--gold);font-variant-numeric:tabular-nums}
+  .stat span{font-size:12.5px;color:var(--dim)}
+
+  /* ---------- Sections ---------- */
+  main{padding:16px 0 70px}
+  section{margin-top:54px;scroll-margin-top:20px}
+  .secHead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  h2{font-size:clamp(20px,3vw,27px);margin:0;font-weight:700}
+  .en-name{color:var(--dim);font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+  .desc{color:var(--dim);font-size:14.5px;margin:2px 0 22px;max-width:760px}
+  .bar{width:38px;height:3px;border-radius:3px;margin:14px 0 0}
+
+  /* ---------- Cards ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(292px,1fr));gap:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+    display:flex;flex-direction:column;text-decoration:none;color:inherit;
+    transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+  .card:hover{transform:translateY(-5px);border-color:rgba(77,163,255,.5);
+    box-shadow:0 16px 40px -18px rgba(0,0,0,.75)}
+  .thumb{aspect-ratio:16/10;background:#0b0e11;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}
+  .card:hover .thumb img{transform:scale(1.045)}
+  .body{padding:16px 17px 18px;flex:1;display:flex;flex-direction:column}
+  .ttl{font-size:17px;font-weight:700;margin:0 0 7px;line-height:1.35}
+  .sub{color:var(--dim);font-size:13.5px;margin:0;flex:1}
+  .meta{display:flex;align-items:center;gap:9px;margin-top:14px;flex-wrap:wrap}
+  .chip{font-size:11.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+  .go{margin-left:auto;font-size:13px;color:var(--acc);white-space:nowrap}
+
+  /* 未发布占位卡 */
+  .card.soon{opacity:.62;cursor:default;pointer-events:none}
+  .card.soon:hover{transform:none;border-color:var(--line);box-shadow:none}
+  .ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:9px;color:#4a5866;font-size:13px;background:repeating-linear-gradient(135deg,
+      #12181f 0 11px,#151c25 11px 22px)}
+  .ph svg{width:34px;height:34px;opacity:.5}
+
+  /* ---------- 顶部导航 ---------- */
+  nav{position:sticky;top:0;z-index:9;background:rgba(8,11,16,.86);backdrop-filter:blur(11px);
+    border-bottom:1px solid var(--line)}
+  .navIn{display:flex;align-items:center;gap:20px;padding:13px 0;flex-wrap:wrap}
+  .logo{font-weight:800;font-size:15.5px;letter-spacing:.02em;text-decoration:none;color:var(--ink)}
+  .logo i{color:var(--acc);font-style:normal}
+  .links{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+  .links a{color:var(--dim);text-decoration:none;font-size:13.5px;padding:7px 12px;border-radius:8px;
+    transition:.18s;border:1px solid transparent}
+  .links a:hover{color:var(--ink);background:var(--card);border-color:var(--line)}
+
+  footer{border-top:1px solid var(--line);padding:30px 0 46px;color:var(--dim);font-size:13.5px}
+  footer a{color:var(--acc);text-decoration:none}
+  .note{margin-top:9px;font-size:12.5px;color:#5f6c7a}
+
+  @media(max-width:640px){header{padding:48px 0 34px}.links{margin-left:0;width:100%}}
+</style>
+</head>
+<body>
+
+<nav><div class="wrap"><div class="navIn">
+  <a class="logo" href="./"><i>⚛</i> Physics Lab</a>
+  <div class="links">
+    <a href="#sim">模拟 Simulations</a>
+    <a href="#prob">解题 Problems</a>
+    <a href="#anim">动画 Animations</a>
+    <a href="#vid">视频 Videos</a>
+  </div>
+</div></div></nav>
+
+<header><div class="wrap">
+  <span class="kicker">Interactive Physics · 物理教学资源</span>
+  <h1>物理实验室<span class="en">Simulation · Problem-solving · Animation · Video</span></h1>
+  <p class="lead">可交互的物理模拟、题目讲解与演示动画。每一个都可以直接在浏览器里运行，拖动参数即时看到结果——不用装软件，手机也能用。</p>
+  <div class="stats">
+    <div class="stat"><b id="nTotal">0</b><span>个资源已上线</span></div>
+    <div class="stat"><b>4</b><span>个分类栏目</span></div>
+    <div class="stat"><b>100%</b><span>浏览器直接运行</span></div>
+  </div>
+</div></header>
+
+<main><div class="wrap">
+
+  <!-- ============ 模拟类 ============ -->
+  <section id="sim">
+    <div class="secHead"><h2>交互模拟</h2><span class="en-name">Simulations</span></div>
+    <div class="bar" style="background:var(--sim)"></div>
+    <p class="desc">可动手调参数的物理模型。改一个数值，结果当场重算——最适合用来建立直觉、验证守恒律。</p>
+    <div class="grid">
+
+      <a class="card" href="./incline-energy.html">
+        <div class="thumb"><img src="thumbnails/incline-energy.jpg" alt="Object on Incline 斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头"></div>
+        <div class="body">
+          <p class="ttl">Object on Incline · 斜面模型机械能守恒</p>
+          <p class="sub">调高度与底边长，看末速度只取决于高度、与倾角无关。含速度/加速度矢量、实时能量对照表与数值积分验证。</p>
+          <div class="meta"><span class="chip">力学</span><span class="chip">机械能守恒</span><span class="go">打开 →</span></div>
+        </div>
+      </a>
+
+      <div class="card soon">
+        <div class="thumb"><div class="ph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="12" r="3"/><circle cx="17" cy="12" r="3"/><path d="M10 12h4"/></svg>
+          <span>即将上线</span></div></div>
+        <div class="body">
+          <p class="ttl">碰撞与动量守恒</p>
+          <p class="sub">两球正碰 / 斜碰，弹性与非弹性对比，动量守恒但动能不一定守恒。</p>
+          <div class="meta"><span class="chip">力学</span><span class="chip">计划中</span></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ============ 解题类 ============ -->
+  <section id="prob">
+    <div class="secHead"><h2>题目讲解</h2><span class="en-name">Problem-solving</span></div>
+    <div class="bar" style="background:var(--prob)"></div>
+    <p class="desc">典型题目的分步解析：受力分析、方程建立、结果讨论。会做成可展开步骤的形式，而不是只给答案。</p>
+    <div class="grid">
+      <div class="card soon">
+        <div class="thumb"><div class="ph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>
+          <span>即将上线</span></div></div>
+        <div class="body">
+          <p class="ttl">斜面类题目精解</p>
+          <p class="sub">含摩擦、连接体、斜面自身运动等常见变式的受力分析与解题套路。</p>
+          <div class="meta"><span class="chip">力学</span><span class="chip">计划中</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 动画类 ============ -->
+  <section id="anim">
+    <div class="secHead"><h2>演示动画</h2><span class="en-name">Animations</span></div>
+    <div class="bar" style="background:var(--anim)"></div>
+    <p class="desc">用动画把抽象概念可视化：过程拆解、慢放、逐步叠加。偏「看懂原理」，不含交互调参。</p>
+    <div class="grid">
+      <div class="card soon">
+        <div class="thumb"><div class="ph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg>
+          <span>即将上线</span></div></div>
+        <div class="body">
+          <p class="ttl">运动学图像逐步生成</p>
+          <p class="sub">x-t、v-t、a-t 三张图同步生长，看清斜率与面积的对应关系。</p>
+          <div class="meta"><span class="chip">运动学</span><span class="chip">计划中</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 视频类 ============ -->
+  <section id="vid">
+    <div class="secHead"><h2>视频实验</h2><span class="en-name">Videos</span></div>
+    <div class="bar" style="background:var(--vid)"></div>
+    <p class="desc">实拍或录屏的实验视频、解题讲解视频，配文字要点与关键时间点索引。</p>
+    <div class="grid">
+      <div class="card soon">
+        <div class="thumb"><div class="ph">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg>
+          <span>即将上线</span></div></div>
+        <div class="body">
+          <p class="ttl">实验视频合集</p>
+          <p class="sub">课堂演示与家庭小实验，附测量数据处理与误差分析。</p>
+          <div class="meta"><span class="chip">实验</span><span class="chip">计划中</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <div>物理实验室 · Physics Lab &nbsp;|&nbsp; <a href="https://github.com/blueskyicanfly/project1">GitHub 源码仓库</a></div>
+  <div class="note">所有页面为纯静态 HTML，无外部依赖，可离线打开。新资源发布后会自动出现在对应栏目。</div>
+</div></footer>
+
+<script>
+/* 统计已上线（非占位）的卡片数量，避免手动维护数字 */
+document.getElementById('nTotal').textContent =
+  document.querySelectorAll('a.card').length;
+</script>
+</body>
+</html>
