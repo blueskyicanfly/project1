@@ -119,3 +119,11 @@ gen_thumbs 需 `CDP_PORT=9357`（避开默认端口占用），产出 PNG 后用
 - smoke_interact.py：初始断言改 b=12；b 拖拽用例替换为「右下角不再是手柄」「bRange/bNum 已移除」；setHB(3,4)→setHB(3)。24/24 PASS。双语审计正常（[EN] 仅剩按钮『中文』属预期）。缩略图重生成。
 
 **语言按钮配色**（提交 3a4a83e）：site-lang.js 注入的旧深色样式改浅（未选 #3d4b5c 深灰字、选中 #1f6feb 蓝底白字、float 容器半透明白）；incline-energy.html 页内 .lang 规则加 !important 兜底。
+
+## 2026-11-09（三）修复拖拽“只能变小不能变大”bug（提交见本次 push，已上线）
+
+用户反馈：把 h 拖到 2 m 松手，再抓向上拖永远超不过 2 m。根因=上一轮为防画面涨缩加的
+`Math.min(dragBase.h0, …)`：每次按下都把当前值当上限，往回拖被钳死。固定画幅架构下 PX_PER_M
+恒定、画面本来就不会重排，这层 min 已无必要 → 删除，改 `setHB(dragBase.h0 − dy/pxPerM)` 双向对称。
+上下限仍由 setHB（0.2~10 m）兜底。smoke 新增回归用例「再抓向上拖：高度能重新变大」，25/25 PASS。
+（备份 /tmp/incline.v10.bak.html；顺带提交过 hRange max 8→10 = 48b05dc）
