@@ -130,17 +130,16 @@ def main():
         vB = float(ev("state.v"))
         check('再点画布=暂停（速度不再变化）', abs(vA-vB) < 1e-9, (vA, vB))
 
-        # ---- 6. 慢动作按钮：×1 → ×5 → ×10 → ×1，文案更新 ----
-        t1 = ev("document.getElementById('btnSlow').textContent")
-        ws.ev("document.getElementById('btnSlow').click()")
-        t2 = ev("document.getElementById('btnSlow').textContent")
-        f2 = int(ev("slowFactor"))
-        ws.ev("document.getElementById('btnSlow').click()")
-        f3 = int(ev("slowFactor")); t3 = ev("document.getElementById('btnSlow').textContent")
-        ws.ev("document.getElementById('btnSlow').click()")
-        f4 = int(ev("slowFactor"))
-        check('慢动作倍率循环 1→5→10→1', f2==5 and f3==10 and f4==1, (f2,f3,f4))
-        check('按钮文案含倍率', ('×5' in t2 or '\\u00d75' in str(t2)), (t1,t2,t3))
+        # ---- 6. 慢动作滑块：对数刻度，拖到 log10(5)≈×5、log10(10)=×10，读数联动 ----
+        def set_slow(t):
+            ws.ev("document.getElementById('slowRange').value=%r; slowFromSlider();" % t)
+        set_slow(0);            f1 = int(ev("slowFactor"))
+        set_slow(0.69897);      f2 = int(ev("slowFactor")); v2 = ev("document.getElementById('slowVal').textContent")
+        set_slow(1);            f3 = int(ev("slowFactor"))
+        set_slow(2);            f4 = int(ev("slowFactor"))
+        set_slow(0);            f5 = int(ev("slowFactor"))
+        check('慢动作滑块 1→5→10→100→1', f1==1 and f2==5 and f3==10 and f4==100 and f5==1, (f1,f2,f3,f4,f5))
+        check('读数显示 ×5', ('×5' in v2 or '\\u00d75' in str(v2)), v2)
 
         # ---- 7. 慢动作物理：同一段动画时长内，×5 时走过的距离应约为 ×1 的 1/25
         #（时间缩 5 倍，s=½at² → 距离缩 25 倍；末速度只缩 5 倍）----

@@ -130,6 +130,8 @@
     '当前理论末速度 √(2gh) =': 'Theoretical final speed \u221a(2gh) = ',
     '当前数值积分结果 =': 'Numeric-integration result = ',
     '慢动作': 'Slow motion',
+    '动画速度（慢动作倍率）': 'Animation speed (slow-motion factor)',
+    '动画放慢，物理数值不变': 'Animation slowed; physics values unchanged',
     '拖动改高度': 'drag to change height',
     '拖动改底边': 'drag to change base',
     '抓小车上下拖也改高度': 'grab the cart to drag height',
