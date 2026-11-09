@@ -29,7 +29,7 @@
 | `thumbnails/` | 双语缩略图 `incline-energy-zh.jpg` / `-en.jpg`，由 CDP 真实渲染截图生成 |
 | `tools/` | `cdp_lang_test.py`（点击 EN 并报告残留中文）、`gen_thumbs.py`（生成双语缩略图）、`test_cross_page.py`（跨页语言同步测试） |
 
-最新提交 `aa8afd7`，工作区干净，已全部推送。
+（首页/模拟器已改「中文页纯中文」，见下；新提交信息以 `git log` 为准。）
 
 ## site-lang.js 的关键设计（改它之前必读）
 
@@ -37,7 +37,16 @@
 - 语言存 `localStorage['site-lang']`，全站共享、跨页同步（已实测）
 - 翻译靠扫描文本节点按 `DICT` 替换；**没配英文的内容保持中文**（不会空白），漏配是安全的
 - Canvas 文字不在 DOM → 页面用 `tr('中文')` 取词，词条仍写进 `DICT`
-- 含标签的整块文案走 `BLOCKS`（按元素 id）；`alt/title/placeholder` 走 `ATTRS`；图片换源用 `data-lang-zh` / `data-lang-en`
+- 含标签的整块文案走 `BLOCKS`（按元素 id）；`alt/title/placeholder` 走 `ATTRS`；图片换源用 `data-lang-zh` / `data-lang-en`，双语图的 alt 用 `data-lang-zh-alt` / `data-lang-en-alt`
+
+### 中文页纯中文（最新一轮改动，改样式前先读）
+
+- **原则：HTML 源文件只写中文**；英文只在 EN 态出现。做法三件套：
+  1. 常驻英文后缀（`.en-name`、`.logo-en`）默认 `display:none`，`html[lang="en"]` 时显示（site-lang.js 会改 `<html lang>`）
+  2. 只在 EN 出现的文字（如首页 h1 副标题）：DOM 里放空占位 `<span id="heroEn">`，页面脚本从 `window.SITE_DICT['@@hero-sub']` 取英文填入；`@@` 开头的 DICT key 不参与扫描
+  3. 双语缩略图（canvas 文字烘进像素）：`thumbnails/incline-energy-{zh,en}.jpg` 由 `tools/gen_thumbs.py` 重新生成，改了模拟器页面文字后必须重跑并裁成 16:10
+- `<title>` 也只写中文；英文标题靠 `TITLE_MAP`（key 已改成纯中文）。若页面在 EN 态直接打开，boot 会反查回中文存原文
+- site-lang.js 的 scanDom：zh 态下若节点文本是某词条的英文译文（旧 localStorage 缓存导致），会先经 `EN2ZH` 反查回中文再登记，切 EN 才能命中
 
 ### 曾经踩过的坑（别再犯）
 
@@ -51,9 +60,10 @@
 ## 验证方式（省 token，优先用它而不是反复截图）
 
 ```bash
-CDP_PORT=9370 python3 tools/cdp_lang_test.py index.html /tmp/out
+# 双语审计（推荐）：查「中文页有无可见英文」+「英文页有无残留中文」
+CDP_PORT=9370 python3 tools/audit_bilingual.py index.html /tmp/out
 ```
-判据：**残留中文节点只剩 `BUTTON: 中文`** = 全绿（那是切换按钮本身）。
+判据：ZH 态只剩 `BUTTON: EN`、`GitHub 源码仓库`、含 HTML 字样的页脚说明（均为合理保留）；EN 态只剩 `BUTTON: 中文`。截图看效果用 `/tmp/shot_freeze.py <page> <prefix> <zh|en>`（会冻结动画循环）。
 
 ## 待办 / 下一步候选
 

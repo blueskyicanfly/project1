@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>物理实验室 · Physics Lab</title>
+<title>物理实验室</title>
 <meta name="description" content="交互模拟、题目讲解、动画演示与视频实验 —— 物理教学资源集">
 <style>
   :root{
@@ -25,7 +25,9 @@
     color:var(--acc);border:1px solid rgba(77,163,255,.35);border-radius:999px;padding:6px 14px;
     background:rgba(77,163,255,.08)}
   h1{font-size:clamp(30px,5.4vw,52px);line-height:1.14;margin:20px 0 12px;font-weight:800;letter-spacing:-.01em}
+  /* 副标题：中文页隐藏（内容为空）；切 EN 后由脚本填入英文并显示 */
   h1 .en{display:block;font-size:.44em;font-weight:500;color:var(--dim);letter-spacing:.06em;margin-top:10px}
+  h1 .en:empty{display:none}
   .lead{color:var(--dim);font-size:clamp(15px,2vw,18px);max-width:660px;margin:0}
   .stats{display:flex;gap:30px;flex-wrap:wrap;margin-top:30px}
   .stat b{display:block;font-size:24px;color:var(--gold);font-variant-numeric:tabular-nums}
@@ -36,7 +38,8 @@
   section{margin-top:54px;scroll-margin-top:20px}
   .secHead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
   h2{font-size:clamp(20px,3vw,27px);margin:0;font-weight:700}
-  .en-name{color:var(--dim);font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+  .en-name{display:none;color:var(--dim);font-size:14px;letter-spacing:.08em;text-transform:uppercase}
+  html[lang="en"] .en-name{display:inline}
   .desc{color:var(--dim);font-size:14.5px;margin:2px 0 22px;max-width:760px}
   .bar{width:38px;height:3px;border-radius:3px;margin:14px 0 0}
 
@@ -80,6 +83,9 @@
   footer a{color:var(--acc);text-decoration:none}
   .note{margin-top:9px;font-size:12.5px;color:#5f6c7a}
   .lang{margin-left:auto}
+  /* 中文页隐藏 logo 英文副名；切 EN（<html lang=en>）后显示 */
+  .logo-en{display:none;font-weight:500;color:var(--dim);font-size:.82em;letter-spacing:.04em;margin-left:6px}
+  html[lang="en"] .logo-en{display:inline}
 
   @media(max-width:640px){header{padding:48px 0 34px}.links{margin-left:0;width:100%}}
 </style>
@@ -87,12 +93,12 @@
 <body>
 
 <nav><div class="wrap"><div class="navIn">
-  <a class="logo" href="./"><i>⚛</i> Physics Lab</a>
+  <a class="logo" href="./"><i>⚛</i> 物理实验室<span class="logo-en">Physics Lab</span></a>
   <div class="links">
-    <a href="#sim">模拟 Simulations</a>
-    <a href="#prob">解题 Problems</a>
-    <a href="#anim">动画 Animations</a>
-    <a href="#vid">视频 Videos</a>
+    <a href="#sim">模拟</a>
+    <a href="#prob">解题</a>
+    <a href="#anim">动画</a>
+    <a href="#vid">视频</a>
   </div>
   <div class="lang">
     <button data-lang="zh">中文</button><button data-lang="en">EN</button>
@@ -100,8 +106,8 @@
 </div></div></nav>
 
 <header><div class="wrap">
-  <span class="kicker">Interactive Physics · 物理教学资源</span>
-  <h1>物理实验室<span class="en">Simulation · Problem-solving · Animation · Video</span></h1>
+  <span class="kicker">物理教学资源</span>
+  <h1>物理实验室<span class="en" id="heroEn"></span></h1>
   <p class="lead">可交互的物理模拟、题目讲解与演示动画。每一个都可以直接在浏览器里运行，拖动参数即时看到结果——不用装软件，手机也能用。</p>
   <div class="stats">
     <div class="stat"><b id="nTotal">0</b><span>个资源已上线</span></div>
@@ -122,9 +128,11 @@
       <a class="card" href="./incline-energy.html">
         <div class="thumb"><img src="thumbnails/incline-energy-zh.jpg"
              data-lang-zh="thumbnails/incline-energy-zh.jpg" data-lang-en="thumbnails/incline-energy-en.jpg"
-             alt="Object on Incline 斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头"></div>
+             alt="斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头"
+             data-lang-zh-alt="斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头"
+             data-lang-en-alt="Screenshot of the Object on Incline simulation: a ball sliding down an incline with velocity and acceleration vectors"></div>
         <div class="body">
-          <p class="ttl">Object on Incline · 斜面模型机械能守恒</p>
+          <p class="ttl">斜面模型机械能守恒</p>
           <p class="sub">调高度与底边长，看末速度只取决于高度、与倾角无关。含速度/加速度矢量、实时能量对照表与数值积分验证。</p>
           <div class="meta"><span class="chip">力学</span><span class="chip">机械能守恒</span><span class="go">打开 →</span></div>
         </div>
@@ -204,7 +212,7 @@
 </div></main>
 
 <footer><div class="wrap">
-  <div><span>物理实验室</span> · Physics Lab&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://github.com/blueskyicanfly/project1">GitHub 源码仓库</a></div>
+  <div><span>物理实验室</span><span class="logo-en">· Physics Lab</span>&nbsp;&nbsp;|&nbsp;&nbsp;<a href="https://github.com/blueskyicanfly/project1">GitHub 源码仓库</a></div>
   <div class="note">所有页面为纯静态 HTML，无外部依赖，可离线打开。新资源发布后会自动出现在对应栏目。</div>
 </div></footer>
 
@@ -213,6 +221,14 @@
 /* 统计已上线（非占位）的卡片数量，避免手动维护数字 */
 document.getElementById('nTotal').textContent =
   document.querySelectorAll('a.card').length;
+/* 英文副标题只在 EN 下显示（CSS 控制），文字从字典的 '@@' 条目取 */
+function syncHeroEn(){
+  const el = document.getElementById('heroEn');
+  el.textContent = (window.SiteLang && window.SiteLang.getLang() === 'en')
+    ? (window.SITE_DICT['@@hero-sub']) : '';
+}
+syncHeroEn();
+document.addEventListener('langchange', syncHeroEn);
 </script>
 </body>
 </html>

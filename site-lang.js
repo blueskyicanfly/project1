@@ -22,15 +22,18 @@
   const DICT = {
     /* ===== 通用 / 导航 ===== */
     '物理实验室': 'Physics Lab',
-    '模拟 Simulations': 'Simulations',
-    '解题 Problems': 'Problems',
-    '动画 Animations': 'Animations',
-    '视频 Videos': 'Videos',
+    '· 物理实验室': '· Physics Lab',
+    '模拟': 'Simulations',
+    '解题': 'Problems',
+    '动画': 'Animations',
+    '视频': 'Videos',
     'GitHub 源码仓库': 'Source on GitHub',
 
     /* ===== 首页 Hero ===== */
-    'Interactive Physics · 物理教学资源': 'Interactive Physics · Teaching Resources',
-    'Simulation · Problem-solving · Animation · Video': 'Simulation · Problem-solving · Animation · Video',
+    '物理教学资源': 'Interactive Physics · Teaching Resources',
+    /* 首页 h1 下的英文副标题：中文页 DOM 里根本没有这段文字，
+       所以用一个带 @@ 标记的条目存放，页面脚本自己取用（扫描器会跳过 @@ 开头的 key） */
+    '@@hero-sub': 'Simulation · Problem-solving · Animation · Video',
     '可交互的物理模拟、题目讲解与演示动画。每一个都可以直接在浏览器里运行，拖动参数即时看到结果——不用装软件，手机也能用。':
       'Interactive simulations, worked solutions and demonstration animations. Everything runs directly in the browser — drag a parameter and see the result instantly. No software to install, works on phones too.',
     '个资源已上线': 'resources published',
@@ -39,6 +42,9 @@
     '浏览器直接运行': 'run in the browser',
 
     /* ===== 首页：分类标题与说明 ===== */
+    /* 中文页只显示纯中文小标题，英文后缀 .en-name 由 CSS 默认隐藏；
+       切到 EN 时页面脚本把 <html lang> 改为 en，CSS 让 .en-name 显示出来，
+       同时下面两条把 h2 换成英文，避免出现「Simulations Simulations」 */
     '交互模拟': 'Interactive Simulations',
     '可动手调参数的物理模型。改一个数值，结果当场重算——最适合用来建立直觉、验证守恒律。':
       'Hands-on physical models. Change one number and everything recalculates — ideal for building intuition and checking conservation laws.',
@@ -53,7 +59,7 @@
       'Recorded experiments and solution walkthroughs, with written key points and timestamps.',
 
     /* ===== 首页：卡片 ===== */
-    'Object on Incline · 斜面模型机械能守恒': 'Object on Incline · Mechanical Energy Conservation',
+    '斜面模型机械能守恒': 'Object on Incline · Mechanical Energy Conservation',
     '调高度与底边长，看末速度只取决于高度、与倾角无关。含速度/加速度矢量、实时能量对照表与数值积分验证。':
       'Adjust height and base length to see that the final speed depends only on height, not on angle. Includes velocity/acceleration vectors, a live energy table and numeric-integration checks.',
     '力学': 'Mechanics',
@@ -79,9 +85,8 @@
     /* ===== 页脚 ===== */
     '所有页面为纯静态 HTML，无外部依赖，可离线打开。新资源发布后会自动出现在对应栏目。':
       'All pages are plain static HTML with no external dependencies and work offline. New resources appear automatically in the right category.',
-    /* 页脚：「物理实验室」在 <span> 里单独翻，剩下的节点以中点开头 */
-    '· Physics Lab  |': '· Physics Lab  |',
-    '物理实验室 · Physics Lab  |': 'Physics Lab  |',
+    /* 页脚：「物理实验室」在 <span> 里单独翻；英文后缀在隐藏 span 里，
+       EN 下由 CSS 显示，内容就是字面「· Physics Lab」，无需词条 */
 
     /* ===== 模拟器：控件与读数 ===== */
     '光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量':
@@ -159,15 +164,15 @@
 
   /* 属性类文字：img alt / title / placeholder */
   const ATTRS = {
-    'Object on Incline 斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头':
+    '斜面模型模拟截图：小球沿斜面下滑，带速度与加速度矢量箭头':
       'Screenshot of the Object on Incline simulation: a ball sliding down an incline with velocity and acceleration vectors',
   };
 
   /* 标题（<title>）按页面区分 */
   /* 标题：任意页面都按「含中文则翻」处理，不依赖精确匹配 */
   const TITLE_MAP = {
-    '物理实验室 · Physics Lab': 'Physics Lab \u00b7 Interactive Physics Resources',
-    'Object on Incline · 斜面模型机械能守恒': 'Object on Incline \u00b7 Mechanical Energy Conservation',
+    '物理实验室': 'Physics Lab \u00b7 Interactive Physics Teaching Resources',
+    '斜面模型机械能守恒': 'Object on Incline \u00b7 Mechanical Energy Conservation',
   };
 
   /* ---------- 状态 ---------- */
@@ -181,7 +186,10 @@
      此时存下的“原文”是英文，切回中文靠它反查 */
   const EN2ZH = (function () {
     const m = Object.create(null);
-    Object.keys(DICT).forEach(function (zh) { const en = DICT[zh]; if (en && !m[en]) m[en] = zh; });
+    Object.keys(DICT).forEach(function (zh) {
+      if (zh.charAt(0) === '@') return;
+      const en = DICT[zh]; if (en && !m[en]) m[en] = zh;
+    });
     return m;
   })();
   let origTitle = '';
@@ -189,6 +197,8 @@
 
   /* ---------- 对外接口 ---------- */
   function tr(s) { return LANG === 'en' && DICT[s] ? DICT[s] : s; }
+  /* 暴露字典：页面需要取纯英文词条（如首页副标题）时用 SITE_DICT[key] */
+  window.SITE_DICT = DICT;
   function getLang() { return LANG; }
 
   function syncButtons() {
@@ -246,6 +256,15 @@
       const pick = (LANG === 'en') ? el.dataset.langEn : el.dataset.langZh;
       const src = pick || el.dataset.origSrc;
       if (el.getAttribute('src') !== src) el.setAttribute('src', src);
+      /* alt 也随语言走：双语图直接取 data-lang-*alt；
+         否则先反查回中文原值再查 ATTRS，避免 EN 态扫到的英文 alt 切不回中文 */
+      let altPick = (LANG === 'en') ? el.dataset.langEnAlt : el.dataset.langZhAlt;
+      if (!altPick) {
+        const cur = el.getAttribute('alt');
+        const base = (LANG === 'zh') ? cur : (EN2ZH[(cur || '').trim()] || cur);
+        altPick = (LANG === 'en' && ATTRS[base]) ? ATTRS[base] : base;
+      }
+      if (altPick && el.getAttribute('alt') !== altPick) el.setAttribute('alt', altPick);
     });
 
     Object.keys(BLOCKS).forEach(function (id) {
@@ -260,7 +279,12 @@
     if (fb && BLOCKS.formulaBox) fb.innerHTML = BLOCKS.formulaBox[LANG];
 
     /* 标题：记住首次见到的原文，切回中文时能还原 */
-    if (!origTitle) { origTitle = document.title; }
+    /* 只在见到中文标题时记原文；若页面已在 EN 态（如跨页同步后直接打开），
+       记下英文形式并反查回中文，保证切回 ZH 能还原 */
+    if (!origTitle) {
+      const t = document.title;
+      origTitle = (LANG === 'zh' || !TITLE_MAP[t]) ? t : (EN2ZH[t] || t);
+    }
     document.title = (LANG === 'en') ? (TITLE_MAP[origTitle] || origTitle) : origTitle;
 
     document.documentElement.lang = LANG === 'en' ? 'en' : 'zh-CN';
@@ -283,9 +307,22 @@
     while ((n = w.nextNode())) {
       const raw = n.nodeValue;
       if (!raw.trim()) continue;
+      /* '@@' 开头的是只供页面取用的纯英文词条，不参与扫描 */
+      if (raw.trim().charAt(0) === '@') continue;
       const p = n.parentNode;
       if (p && (/^(script|style)$/i.test(p.tagName))) continue;
-      const base = EN2ZH[raw.trim()] || raw;
+      let base = raw;
+      if (LANG === 'zh') {
+        /* 浏览器表单自动填充可能留着上次的英文译文：整段命中就换回中文 */
+        if (EN2ZH[raw.trim()]) base = EN2ZH[raw.trim()];
+        else {
+          for (const en in EN2ZH) {
+            if (en.length > 10 && raw.indexOf(en) !== -1) {
+              base = raw.replace(en, EN2ZH[en]); break;
+            }
+          }
+        }
+      }
       NODES.push([n, base]);
     }
     document.querySelectorAll('[alt],[title],input[placeholder]').forEach(function (el) {
