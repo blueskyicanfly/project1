@@ -66,7 +66,7 @@
   <div class="topbar">
     <div>
       <h1>斜面模型机械能守恒</h1>
-      <div class="sub">光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量</div>
+      <div class="sub">光滑斜面（无摩擦）· 底边固定 12 m，只调高度 h 改变倾斜程度 · 黄色箭头 = 瞬时速度矢量</div>
     </div>
     <div class="lang">
       <button data-lang="zh">中文</button><button data-lang="en">EN</button>
@@ -91,12 +91,6 @@
       <div class="row">
         <input type="range" id="hRange" min="0.5" max="8" step="0.1" value="3">
         <input type="number" id="hNum" min="0.2" max="10" step="0.1" value="3">
-      </div>
-
-      <label>斜面底边长 b（米）</label>
-      <div class="row">
-        <input type="range" id="bRange" min="1" max="12" step="0.1" value="4">
-        <input type="number" id="bNum" min="0.5" max="15" step="0.1" value="4">
       </div>
 
       <label>物体质量 m（千克）</label>
@@ -173,14 +167,15 @@ const getLang = () => (window.SiteLang ? window.SiteLang.getLang() : 'zh');
    ============================================================ */
 const G = 9.8;
 
-const state = { h:3, b:4, m:2, s:0, v:0, running:false, done:false };
+const B_FIXED = 12;   // 底边固定 12 m：只调高度（研究倾斜程度对下滑的影响）
+const state = { h:3, b:B_FIXED, m:2, s:0, v:0, running:false, done:false };
 let slowFactor = 1;   // 慢动作倍率：1 / 5 / 10
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 let W = cv.width, H = cv.height;
 /* 固定画幅比例尺：只随画布尺寸变，绝不随 h/b 数值变（图形永不自动涨缩） */
-let PX_PER_M = Math.max(Math.min((W - 92) / 15, (H - 92) / 10), 1);   // 15m×10m=数字框最大三角形恰好放满画布
+let PX_PER_M = Math.max(Math.min((W - 92) / B_FIXED, (H - 92) / 10), 1);   // 12m(固定底)×10m(h上限) 恰好放满画布
 
 /* ---------- 几何：把物理量换算成画布坐标 ---------- */
 /* “取景框”（meter range）决定比例尺 pxPerM：框恒定 → 拖拽时画面不缩放不平移，
@@ -188,7 +183,7 @@ let PX_PER_M = Math.max(Math.min((W - 92) / 15, (H - 92) / 10), 1);   // 15m×10
    几何=固定画幅：pxPerM 只随画布尺寸变；三角形包围盒中心恒=画布中心。 */
 /* 取景框=固定画幅：pxPerM 只由画布大小决定，与 h/b 数值无关。
    → 任何操作（拖拽/滑块/数字框）都不会让图形“自动涨大占满屏幕”；
-     15 m 的底边永远画这么长，拖小车只改变高度。 */
+     底边固定 12 m 永远画这么长，拖小车只改变高度。 */
 function _geomWith(){
   const margin = 46;
   const pxPerM = PX_PER_M;
@@ -266,12 +261,12 @@ function derived(){
 
 /* ---------- 绘制 ---------- */
 /* 拖拽手柄位置（顶点=改高度 h，右下角=改底边 b），及悬停/拖动状态 */
-let hoverHandle = null;   // 'h' | 'b' | null
+let hoverHandle = null;   // 'h' | 'cart' | null
 let dragging  = null;
 
 function handleSpots(){
   const g = geom();
-  return { h:{ x:g.top.x, y:g.top.y }, b:{ x:g.br.x, y:g.br.y } };
+  return { h:{ x:g.top.x, y:g.top.y } };
 }
 /* 命中小车车身/轮子区域（矩形近似：以车中心为界 ±车长一半、±(车高+轮半径)） */
 function hitCart(mx,my){
@@ -288,11 +283,7 @@ function hitCart(mx,my){
 
 function hitHandle(mx,my){
   const hs = handleSpots();
-  const dh = Math.hypot(mx-hs.h.x, my-hs.h.y);
-  const db = Math.hypot(mx-hs.b.x, my-hs.b.y);
-  if(dh <= 16 && dh <= db) return 'h';
-  if(db <= 16) return 'b';
-  return null;
+  return (Math.hypot(mx-hs.h.x, my-hs.h.y) <= 16) ? 'h' : null;
 }
 
 function draw(){
@@ -399,9 +390,9 @@ function draw(){
     ctx.setLineDash([]); ctx.restore();
   }
 
-  // 拖拽手柄：顶点（改 h）与右下角（改 b）。悬停/拖动时放大、变色，提示可拖
+  // 拖拽手柄：只有顶点（改 h）。悬停/拖动时放大、变色，提示可拖
   const hs = handleSpots();
-  for(const key of ['h','b']){
+  for(const key of ['h']){
     const spt = hs[key];
     const on = (hoverHandle===key || dragging===key);
     ctx.beginPath(); ctx.arc(spt.x, spt.y, on?9:6.5, 0, Math.PI*2);
@@ -414,7 +405,6 @@ function draw(){
     ctx.fillStyle='#7c8894'; ctx.font='12px system-ui,sans-serif';
     ctx.textAlign='left';
     ctx.fillText(tr('拖动改高度'), hs.h.x+12, hs.h.y-12);   /* 顶点右上方：三角形外，空白 */
-    ctx.fillText(tr('拖动改底边'), hs.b.x+12, hs.b.y+4);
     ctx.textAlign='right';
     ctx.fillText(tr('抓小车上下拖也改高度'), hs.h.x-40, hs.h.y+34);
     ctx.textAlign='left';
@@ -548,10 +538,9 @@ function bind(rangeId, numId, key, min, max){
                                          : ('请输入 '+min+' ~ '+max+' 之间的数值'); return;
     }
     err.textContent='';
-    /* h/b 走统一通道（取景框联动钳位在 setHB 外再做一层）；m 直接写 */
-    if(key==='h' || key==='b'){
-      const other = (key==='h') ? state.b : state.h;
-      setHB(key==='h'?val:other, key==='h'?other:val);
+    /* h 走统一通道（钳位/同步在 setHB）；m 直接写 */
+    if(key==='h'){
+      setHB(val, state.b);
     } else {
       state[key]=val; r.value=val; n.value=val;
       reset(); buildTable(); draw(); readouts();
@@ -584,7 +573,6 @@ function syncSlowBtn(){
 document.getElementById('slowRange').oninput = slowFromSlider;
 
 bind('hRange','hNum','h',0.2,10);
-bind('bRange','bNum','b',0.5,15);
 bind('mRange','mNum','m',0.1,20);
 
 /* ---------- 画布直接交互 ----------
@@ -598,17 +586,15 @@ function canvasXY(e){
 /* h/b 的唯一写入口：先钳范围、写 state，再把滑块/数字框同步为显示值。
    （range 控件的 value 会被浏览器按 step 取整——那只是滑块的显示值，
      绝不能再读回来当真源；真源永远是 state） */
-function setHB(h, b){
-  h = Math.min(10, Math.max(0.2, +h)); b = Math.min(15, Math.max(0.5, +b));
-  state.h = +h.toFixed(3); state.b = +b.toFixed(3);
+function setHB(h){
+  h = Math.min(10, Math.max(0.2, +h));
+  state.h = +h.toFixed(3); state.b = B_FIXED;
   syncHBInputs();
   reset(); buildTable(); draw(); readouts();
 }
 function syncHBInputs(){
   const hr=document.getElementById('hRange'), hn=document.getElementById('hNum');
-  const brg=document.getElementById('bRange'), bn=document.getElementById('bNum');
   hr.value=state.h; hn.value=state.h;
-  brg.value=state.b; bn.value=state.b;
 }
 function hitAny(mx,my){
   /* 小车在坡顶时常压住顶点黄点：优先判小车，保证「抓车」手感一致 */
@@ -618,19 +604,17 @@ function hitAny(mx,my){
 
 cv.addEventListener('pointermove', (e)=>{
   const {x,y} = canvasXY(e);
+  void x;   // h 拖拽只用到竖直位移
   if(dragging){
     /* 固定画幅 + 按下瞬间的“车中心锚点”：拖到哪，车中心就跟到哪。
        高度变化与手指位移严格成比例（1:1 跟手），底边长度全程不变 */
-    const g = geom(), dx = x - dragBase.x, dy = y - dragBase.y;
+    const g = geom(), dy = y - dragBase.y;
     if(dragging==='h' || dragging==='cart'){
       /* 抓车/抓顶点上下拽：高度变化与手指竖直位移严格成比例——
          坡高 h（米）= 按下值 h0 − dy(像素)/pxPerM。
          画幅固定、pxPerM 恒定 → “拖到哪，高度就是哪”，绝无放大效应；
          斜面越平时拖同样距离高度变化也一样直观（按米读数，不再跳变）。 */
-      setHB(Math.min(dragBase.h0, dragBase.h0 - dy/g.pxPerM), state.b);
-    } else {
-      /* 右下角左右拖：改底边 b，h 不变，1:1 跟手 */
-      setHB(state.h, dragBase.b0 + dx/g.pxPerM);
+      setHB(Math.min(dragBase.h0, dragBase.h0 - dy/g.pxPerM));
     }
     return;
   }
@@ -644,7 +628,7 @@ cv.addEventListener('pointerdown', (e)=>{
   const hit = hitAny(x,y);                  // 抓小车/顶点手柄 = 上下拽改高度
   if(hit){
     dragging = hit;
-    dragBase = { x, y, h0:state.h, b0:state.b };   // 按下瞬间的锚点与起始尺寸
+    dragBase = { x, y, h0:state.h };              // 按下瞬间的锚点与起始高度
     cv.setPointerCapture(e.pointerId); cv.style.cursor='grabbing'; draw();
   }
 });

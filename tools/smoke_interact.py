@@ -45,7 +45,7 @@ def main():
 
         # ---- 1. 初始状态：小车在顶端、静止 ----
         s0 = ev("JSON.stringify({h:state.h,b:state.b,s:state.s,v:state.v,run:state.running})")
-        check('初始 h=3 b=4 静止', s0 and '"h":3' in s0 and '"s":0' in s0 and '"run":false' in s0, s0)
+        check('初始 h=3 b=12(固定) 静止', s0 and '"h":3' in s0 and '"b":12' in s0 and '"s":0' in s0 and '"run":false' in s0, s0)
 
         # ---- 2. 悬停到顶点手柄：cursor 变 grab，hoverHandle='h' ----
         pos = ev("JSON.stringify((function(){const g=geom();return {x:g.top.x,y:g.top.y,cx:cv.getBoundingClientRect().left,cy:cv.getBoundingClientRect().top,sc:cv.getBoundingClientRect().width/W}})())")
@@ -72,28 +72,18 @@ def main():
         check('向下拽 h 变小（底边不变）', h_after < h_before, '%s -> %s' % (h_before, h_after))
         check('数字框与滑块联动', abs(float(hnum) - h_after) < 0.05, hnum)
 
-        # ---- 4. 悬停右下角手柄并右拖：b 变大（先复位，前面拖拽已把 h/b 拉偏）----
-        ws.ev("setHB(3,4)")
-        time.sleep(0.2)
+        # ---- 4. 底边固定 12 m：右下角不再是手柄，悬停无 hoverHandle=b；也不存在 bRange/bNum 控件 ----
         pos2 = ev("JSON.stringify((function(){const g=geom();return {x:g.br.x,y:g.br.y,cx:cv.getBoundingClientRect().left,cy:cv.getBoundingClientRect().top,sc:cv.getBoundingClientRect().width/W}})())")
         P2 = json.loads(pos2)
-        bx, by = P2['cx'] + P2['x']*P2['sc'], P2['cy'] + P2['y']*P2['sc'] - 3   # 手柄中心附近（文字在其右侧）
+        bx, by = P2['cx'] + P2['x']*P2['sc'], P2['cy'] + P2['y']*P2['sc'] - 3
         cdp_mouse(ws, "mouseMoved", bx, by)
         time.sleep(0.3)
-        check('悬停右下角 hoverHandle=b', ev("hoverHandle") == 'b', ev("hoverHandle"))
-        b_before = float(ev("state.b"))
-        cdp_mouse(ws, "mousePressed", bx, by, button="left", click_count=1)
-        for i in range(1, 7):
-            cdp_mouse(ws, "mouseMoved", bx + i*20, by, button="left")
-            time.sleep(0.05)
-        cdp_mouse(ws, "mouseReleased", bx + 120, by, button="left")
-        time.sleep(0.4)
-        b_after = float(ev("state.b"))
-        check('向右拖 b 变大', b_after > b_before, '%s -> %s' % (b_before, b_after))
-
+        check('右下角不再是拖拽手柄', ev("hoverHandle") != 'b', ev("hoverHandle"))
+        check('b 滑块/数字框已移除', ev("!document.getElementById('bRange') && !document.getElementById('bNum')") is True,
+              ev("[!!document.getElementById('bRange'), !!document.getElementById('bNum')]"))
         # ---- 4b. 悬停小车本体：变小手，抓着上下拽同样改 h（往下拽 h 变小）----
         # 先把 h/b 复位到默认值再测抓车（前面拖拽已把 h 拉到极值、车贴住顶点手柄）
-        ws.ev("setHB(3,4)")
+        ws.ev("setHB(3)")
         cp = ev("JSON.stringify((function(){const p=cartPos(state.s),r=cv.getBoundingClientRect();return {x:p.x,y:p.y,cx:r.left,cy:r.top,sc:r.width/W}})())")
         CP = json.loads(cp)
         ccx, ccy = CP['cx']+CP['x']*CP['sc'], CP['cy']+CP['y']*CP['sc']
@@ -115,7 +105,7 @@ def main():
         check('三角形中心≈画布中心', abs(C['cx']-C['W']/2)<2 and abs(C['cy']-C['H']/2)<2, (round(C['cx']),round(C['W']/2),round(C['cy']),round(C['H']/2)))
 
         # ---- 4e. 拖 h 时底边绝不变长/平移：br.x 与 groundY 恒定；且跟手比例≈1:1 ----
-        ws.ev("setHB(3,4)")
+        ws.ev("setHB(3)")
         g_before = json.loads(ev("JSON.stringify((function(){const g=geom();return {x:g.br.x,y:g.groundY,p:g.pxPerM}})())"))
         hp = ev("""JSON.stringify((function(){const p=cartPos(0),d=derived(),r=cv.getBoundingClientRect();
           const bw=Math.min(30+Math.cbrt(state.m)*16,78);   // 车身下缘贴斜面处（与 pointerdown 锚点一致）

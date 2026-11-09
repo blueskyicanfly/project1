@@ -89,10 +89,9 @@
        EN 下由 CSS 显示，内容就是字面「· Physics Lab」，无需词条 */
 
     /* ===== 模拟器：控件与读数 ===== */
-    '光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量':
-      'Frictionless incline · adjust height h and base b live · yellow arrow = instantaneous velocity',
+    '光滑斜面（无摩擦）· 底边固定 12 m，只调高度 h 改变倾斜程度 · 黄色箭头 = 瞬时速度矢量':
+      'Frictionless incline · base fixed at 12 m, adjust height h to change the slope · yellow arrow = instantaneous velocity',
     '斜面高度 h（米）': 'Incline height h (m)',
-    '斜面底边长 b（米）': 'Incline base b (m)',
     '物体质量 m（千克）': 'Mass m (kg)',
     '释放小车': 'Release cart',
     '暂停 / 继续': 'Pause / Resume',
@@ -133,7 +132,6 @@
     '动画速度（慢动作倍率）': 'Animation speed (slow-motion factor)',
     '动画放慢，物理数值不变': 'Animation slowed; physics values unchanged',
     '拖动改高度': 'drag to change height',
-    '拖动改底边': 'drag to change base',
     '抓小车上下拖也改高度': 'grab the cart to drag height',
 
     /* ===== 模拟器：画布文字（Canvas 扫不到，页面用 tr() 取词）===== */
