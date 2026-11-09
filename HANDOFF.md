@@ -105,3 +105,17 @@ b 拖拽 4.0→6.97 正常；点击四态（释放/暂停/继续/重放）、慢
 gen_thumbs 需 `CDP_PORT=9357`（避开默认端口占用），产出 PNG 后用 PIL 裁 16:10 存成 `thumbnails/<name>-{zh,en}.jpg`。
 
 **备份**：/tmp/incline.v6.bak.html、/tmp/index.v4.bak.html
+
+## 2026-11-09（三）底边固定 12 m（提交 07c366a，已上线）
+
+用户定案：调底边对“研究小车下滑/倾斜程度”没有意义 → **b 固定 12 m，所有调 b 的部分全部删除**，只保留调高度 h。
+（备份 /tmp/incline.v8.bak.html）
+
+- `B_FIXED = 12`；state.b 恒等于它；`setHB(h)` 改单参。
+- 删除：bRange/bNum 滑块+数字框、bind('bRange'…)、右下角拖拽手柄（hitHandle/handleSpots/绘制循环/canvas 提示文字「拖动改底边」）、pointermove 的 b 拖拽分支、dragBase.b0。
+- PX_PER_M 改按 `12m(固定底)×10m(h上限)` 定尺 → 依旧固定画幅，画面永不涨缩；h=3 时三角形扁而宽（约 1:4），这是 b=12 的正常样子。
+- 副标题：「光滑斜面（无摩擦）· 底边固定 12 m，只调高度 h 改变倾斜程度 · …」；site-lang.js 同步新英文译名、删掉 '斜面底边长 b（米）'/'拖动改底边' 两个失效词条。
+- 读数表/对比表里的「底边 b」只是显示 12.00，保留未动。
+- smoke_interact.py：初始断言改 b=12；b 拖拽用例替换为「右下角不再是手柄」「bRange/bNum 已移除」；setHB(3,4)→setHB(3)。24/24 PASS。双语审计正常（[EN] 仅剩按钮『中文』属预期）。缩略图重生成。
+
+**语言按钮配色**（提交 3a4a83e）：site-lang.js 注入的旧深色样式改浅（未选 #3d4b5c 深灰字、选中 #1f6feb 蓝底白字、float 容器半透明白）；incline-energy.html 页内 .lang 规则加 !important 兜底。
