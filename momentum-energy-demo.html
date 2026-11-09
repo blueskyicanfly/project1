@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机械能守恒与动量模拟 · 斜面下滑</title>
+<style>
+  :root{
+    --bg:#101418; --panel:#1a2027; --line:#2b343e; --ink:#e6edf3;
+    --dim:#8b98a5; --acc:#4da3ff; --vel:#ffb020; --ok:#3fb950; --warn:#f85149;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Noto Sans CJK SC",system-ui,sans-serif;
+    line-height:1.5;padding:18px}
+  h1{font-size:20px;margin:0 0 4px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:16px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+  canvas{width:100%;height:auto;display:block;border-radius:8px;background:#0b0e11}
+  label{display:block;font-size:13px;color:var(--dim);margin:12px 0 4px}
+  .row{display:flex;gap:8px;align-items:center}
+  input[type=number]{width:88px;padding:7px 8px;background:#0b0e11;border:1px solid var(--line);
+    border-radius:6px;color:var(--ink);font-size:14px}
+  input[type=range]{flex:1;accent-color:var(--acc)}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--ink)}
+  .chk input{width:16px;height:16px;accent-color:var(--acc)}
+  button{padding:9px 14px;background:#22303d;border:1px solid var(--line);border-radius:6px;
+    color:var(--ink);font-size:14px;cursor:pointer;font-family:inherit}
+  button:hover{background:#2b3a48}
+  button.pri{background:var(--acc);border-color:var(--acc);color:#04121f;font-weight:600}
+  .btns{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 4px;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-weight:500;font-size:12px}
+  td.v{font-variant-numeric:tabular-nums;font-family:ui-monospace,Consolas,monospace;text-align:right}
+  .big{font-size:22px;color:var(--vel);font-weight:600}
+  .sec{margin-top:18px}
+  .formula{background:#0b0e11;border-left:3px solid var(--acc);padding:10px 12px;
+    border-radius:6px;font-size:14px;margin:10px 0}
+  .formula code{font-family:ui-monospace,Consolas,monospace;color:#c9d7e6}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;
+    background:#22303d;color:var(--dim);margin-right:6px}
+  table.data th{padding:6px 5px;text-align:right;font-size:12px}
+  table.data td{text-align:right;padding:5px;border-bottom:1px solid var(--line)}
+  table.data th:first-child,table.data td:first-child{text-align:left}
+  .err{color:var(--warn);font-size:12px;margin-top:8px;min-height:16px}
+  .note{color:var(--dim);font-size:12px;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>机械能守恒与动量演示 · 小球沿斜面下滑</h1>
+  <div class="sub">光滑斜面（无摩擦）· 可实时调高度 h 与底边长 b · 黄色箭头 = 瞬时速度矢量</div>
+
+  <div class="grid">
+    <!-- ===== 画布 ===== -->
+    <div class="card">
+      <canvas id="cv" width="760" height="470"></canvas>
+      <div class="formula">
+        下滑加速度 <code>a = g·sinθ</code>　沿斜面位移 <code>L = √(h² + b²)</code><br>
+        底端速度 <code>v = √(2gh)</code>　动量大小 <code>p = m·v</code>
+      </div>
+      <div class="btns">
+        <button class="pri" id="btnRelease">释放小球</button>
+        <button id="btnPause">暂停 / 继续</button>
+        <button id="btnReset">复位</button>
+      </div>
+    </div>
+
+    <!-- ===== 控制 + 读数 ===== -->
+    <div class="card">
+      <label>斜面高度 h（米）</label>
+      <div class="row">
+        <input type="range" id="hRange" min="0.5" max="8" step="0.1" value="3">
+        <input type="number" id="hNum" min="0.2" max="10" step="0.1" value="3">
+      </div>
+
+      <label>斜面底边长 b（米）</label>
+      <div class="row">
+        <input type="range" id="bRange" min="1" max="12" step="0.1" value="4">
+        <input type="number" id="bNum" min="0.5" max="15" step="0.1" value="4">
+      </div>
+
+      <label>小球质量 m（千克）</label>
+      <div class="row">
+        <input type="range" id="mRange" min="0.5" max="10" step="0.1" value="2">
+        <input type="number" id="mNum" min="0.1" max="20" step="0.1" value="2">
+      </div>
+
+      <label class="chk"><input type="checkbox" id="ckRoll">考虑滚动（实心球，等效加速度 5/7·g·sinθ）</label>
+
+      <table>
+        <tr><th>底端速度 v</th><td class="v big" id="rV">—</td></tr>
+        <tr><th>动量大小 p = mv</th><td class="v" id="rP">—</td></tr>
+        <tr><th>斜面高度 h</th><td class="v" id="rH">—</td></tr>
+        <tr><th>斜面底边 b</th><td class="v" id="rB">—</td></tr>
+        <tr><th>斜面长度 L（斜边）</th><td class="v" id="rL">—</td></tr>
+        <tr><th>倾角 θ</th><td class="v" id="rA">—</td></tr>
+        <tr><th>加速度 a</th><td class="v" id="rA2">—</td></tr>
+        <tr><th>下滑时间 t</th><td class="v" id="rT">—</td></tr>
+      </table>
+      <div class="err" id="err"></div>
+      <div class="note">注：勾选「考虑滚动」后有一部分能量转为转动动能，末速度会比 √(2gh) 略小，这是真实小球会滚而不滑的情况。</div>
+    </div>
+  </div>
+
+  <!-- ===== 实时读数 + 理论对照 ===== -->
+  <div class="card sec">
+    <h1 style="font-size:16px">实时读数（小球运动过程中）</h1>
+    <table>
+      <tr><th>物理量</th><th>当前值</th><th>底端时</th></tr>
+      <tr><td>已下滑距离 s</td><td class="v" id="cS">—</td><td class="v" id="eS">—</td></tr>
+      <tr><td>剩余高度 Δh</td><td class="v" id="cH">—</td><td class="v" id="eH">0.00 m</td></tr>
+      <tr><td>速度 v</td><td class="v" id="cV">—</td><td class="v" id="eV">—</td></tr>
+      <tr><td>动能 Ek = ½mv²</td><td class="v" id="cK">—</td><td class="v" id="eK">—</td></tr>
+      <tr><td>减少的重力势能 mgΔh</td><td class="v" id="cU">—</td><td class="v" id="eU">—</td></tr>
+      <tr><td>机械能合计 Ek + 剩余Ep</td><td class="v" id="cE">—</td><td class="v" id="eE">—</td></tr>
+      <tr><td>动量 p = mv</td><td class="v" id="cP">—</td><td class="v" id="eP">—</td></tr>
+    </table>
+    <div class="note">最右两列若始终相等（Ek 增加量 = Ep 减少量），即验证了机械能守恒。</div>
+  </div>
+
+  <!-- ===== 理论 vs 模拟对照表 ===== -->
+  <div class="card sec">
+    <h1 style="font-size:16px">核心验证：末速度只取决于高度，与倾角无关</h1>
+    <div><span class="tag" id="thTag"></span><span class="tag" id="simTag"></span></div>
+    <table class="data" style="margin-top:10px">
+      <thead>
+        <tr><th>高度 h</th><th>底边 b</th><th>倾角 θ</th><th>加速度 a</th>
+            <th>理论 v=√(2gh)</th><th>模拟 v（数值积分）</th><th>偏差</th></tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="note">
+      伽利略的结论：同一高度、不同倾角，末速度相同；但倾角越陡用时越短。
+      「模拟」列是用 a = g·sinθ 做数值积分跑出来的结果，与理论公式对得上即证明模型正确。
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   物理模型（光滑斜面，无摩擦）
+   θ = atan(h/b)          倾角
+   L = √(h² + b²)         斜面长度（斜边）
+   a = g·sinθ             下滑加速度（滚动模式为 5/7·g·sinθ）
+   v = √(2aL)             底端速度；滑动时化简为 √(2gh)
+   ============================================================ */
+const G = 9.8;
+
+const state = { h:3, b:4, m:2, roll:false, s:0, v:0, running:false, done:false };
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+let W = cv.width, H = cv.height;
+
+/* ---------- 几何：把物理量换算成画布坐标 ---------- */
+function geom(){
+  const padL=58, padR=40, padT=56, padB=64;
+  const availW = W - padL - padR;
+  const availH = H - padT - padB;
+
+  const scale = Math.min(availW / state.b, availH / state.h);
+  const pxPerM = Math.max(scale, 1);
+
+  const groundY = padT + state.h * pxPerM;         // 底边所在的水平线
+  const originX = padL;                            // 斜面顶端（小球起点）
+
+  return {
+    pxPerM, groundY,
+    top:{ x:originX, y:padT },
+    br :{ x:originX + state.b*pxPerM, y:groundY }, // 斜面底端
+    padL, padR, padT, padB
+  };
+}
+
+/* 小球沿斜面走了 s 米时的画布位置 */
+function ballPos(s){
+  const g = geom();
+  const L = Math.hypot(state.h, state.b);
+  const t = Math.max(0, Math.min(1, s / L));
+  return { x:g.top.x + (g.br.x-g.top.x)*t, y:g.top.y + (g.br.y-g.top.y)*t };
+}
+
+/* ---------- 派生量 ---------- */
+function derived(){
+  const th = Math.atan2(state.h, state.b);
+  const L  = Math.hypot(state.h, state.b);
+  const k  = state.roll ? 5/7 : 1;
+  const a  = k * G * Math.sin(th);
+  const vEnd = Math.sqrt(2*a*L);
+  const tEnd = Math.sqrt(2*L/a);
+  return { th, L, a, vEnd, tEnd };
+}
+
+/* ---------- 绘制 ---------- */
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const g = geom(), d = derived();
+  const p = ballPos(state.s);
+
+  // 地面
+  ctx.strokeStyle='#39434e'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(g.padL-24,g.groundY); ctx.lineTo(W-g.padR+16,g.groundY); ctx.stroke();
+
+  // 斜面（三角形）
+  ctx.fillStyle='rgba(77,163,255,.10)';
+  ctx.beginPath();
+  ctx.moveTo(g.top.x,g.top.y); ctx.lineTo(g.br.x,g.groundY); ctx.lineTo(g.top.x,g.groundY);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle='#4da3ff'; ctx.lineWidth=2.5;
+  ctx.beginPath(); ctx.moveTo(g.top.x,g.top.y); ctx.lineTo(g.br.x,g.groundY); ctx.stroke();
+
+  // 高度标注（左侧竖线 + 双箭头）
+  const hx = g.top.x - 26;
+  ctx.strokeStyle='#8b98a5'; ctx.lineWidth=1.2; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(hx,g.top.y); ctx.lineTo(hx,g.groundY); ctx.stroke();
+  ctx.setLineDash([]);
+  arrow(ctx,hx,g.top.y,hx,g.groundY,'#8b98a5',6);
+  arrow(ctx,hx,g.groundY,hx,g.top.y,'#8b98a5',6);
+  ctx.fillStyle='#c9d7e6'; ctx.font='13px ui-monospace,Consolas,monospace';
+  ctx.textAlign='right';
+  ctx.fillText('h = '+state.h.toFixed(2)+' m', hx-6, (g.top.y+g.groundY)/2);
+
+  // 底边标注
+  const by = g.groundY + 30;
+  ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(g.top.x,g.groundY+6); ctx.lineTo(g.top.x,by); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(g.br.x,g.groundY+6); ctx.lineTo(g.br.x,by); ctx.stroke();
+  ctx.setLineDash([]);
+  arrow(ctx,g.top.x,by,g.br.x,by,'#8b98a5',6);
+  arrow(ctx,g.br.x,by,g.top.x,by,'#8b98a5',6);
+  ctx.textAlign='center';
+  ctx.fillText('b = '+state.b.toFixed(2)+' m', (g.top.x+g.br.x)/2, by-7);
+
+  // 倾角 θ
+  const deg = d.th*180/Math.PI;
+  ctx.strokeStyle='#3fb950'; ctx.lineWidth=1.6;
+  ctx.beginPath();
+  ctx.arc(g.br.x,g.groundY, 34, Math.PI, Math.PI + d.th, true);
+  ctx.stroke();
+  ctx.fillStyle='#3fb950'; ctx.textAlign='right';
+  ctx.fillText('θ = '+deg.toFixed(1)+'°', g.br.x-40, g.groundY-8);
+
+  // 小球
+  const r = 6 + Math.cbrt(state.m)*7;
+  ctx.fillStyle='#ff7b54'; ctx.strokeStyle='#ffd0c2'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+  // 速度矢量（沿斜面向下）
+  if(state.v > 0.01){
+    const ux = Math.cos(d.th), uy = Math.sin(d.th);           // 沿斜面向下的单位向量
+    const len = 34 + state.v * 15;                            // 长度随速度增长
+    const x2 = p.x + ux*len, y2 = p.y + uy*len;
+    arrow(ctx,p.x,p.y,x2,y2,'#ffb020',9);
+    ctx.fillStyle='#ffb020'; ctx.font='bold 13px ui-monospace,Consolas,monospace';
+    ctx.textAlign='left';
+    ctx.fillText('v = '+state.v.toFixed(2)+' m/s', x2+8, y2-4);
+
+    // 加速度矢量（青色，较短）
+    const al = 26 + d.a*3.2;
+    arrow(ctx,p.x,p.y,p.x+ux*al,p.y+uy*al,'#39c5cf',7);
+    ctx.fillStyle='#39c5cf'; ctx.font='12px ui-monospace,Consolas,monospace';
+    ctx.fillText('a = '+d.a.toFixed(2)+' m/s²', p.x+ux*al+8, p.y+uy*al+14);
+  }
+
+  // 标题栏读数
+  ctx.fillStyle='#8b98a5'; ctx.font='13px system-ui,sans-serif'; ctx.textAlign='left';
+  const st = state.done ? '已到达底端' : (state.running ? '运动进行中…' : '静止待释放');
+  ctx.fillText(st + '   |   t = ' + simTime.toFixed(2) + ' s', g.padL-24, 26);
+}
+
+function arrow(c,x1,y1,x2,y2,color,head){
+  const a=Math.atan2(y2-y1,x2-x1);
+  c.strokeStyle=color; c.fillStyle=color; c.lineWidth=2.6;
+  c.beginPath(); c.moveTo(x1,y1); c.lineTo(x2,y2); c.stroke();
+  c.beginPath();
+  c.moveTo(x2,y2);
+  c.lineTo(x2-head*Math.cos(a-0.42), y2-head*Math.sin(a-0.42));
+  c.lineTo(x2-head*Math.cos(a+0.42), y2-head*Math.sin(a+0.42));
+  c.closePath(); c.fill();
+}
+
+/* ---------- 实时读数 ---------- */
+let simTime = 0;
+function readouts(){
+  const d = derived();
+  const s = state.s, v = state.v, m = state.m;
+  const L = d.L;
+  const dh = (L - s) * Math.sin(d.th);        // 距底端的剩余高度差
+  const Ek = 0.5*m*v*v + (state.roll ? 0.2*m*v*v : 0);   // 滚动时含转动动能
+  const dU = m*G*dh;                          // 尚未释放的重力势能（相对当前位置）
+  const U0 = m*G*state.h;                     // 起始总可用势能
+  const EpLeft = m*G*(state.h - s*Math.sin(d.th));
+
+  const f=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'—';
+  document.getElementById('cS').textContent = f(s)+' m';
+  document.getElementById('cH').textContent = f(dh)+' m';
+  document.getElementById('cV').textContent = f(v)+' m/s';
+  document.getElementById('cK').textContent = f(Ek)+' J';
+  document.getElementById('cU').textContent = f(U0-EpLeft)+' J';
+  document.getElementById('cE').textContent = f(Ek+EpLeft)+' J  (恒定)';
+  document.getElementById('cP').textContent = f(m*v)+' kg·m/s';
+
+  const eV = state.roll ? Math.sqrt(2*d.a*L) : Math.sqrt(2*G*state.h);
+  const eK = 0.5*m*eV*eV + (state.roll?0.2*m*eV*eV:0);
+  document.getElementById('eS').textContent = f(L)+' m';
+  document.getElementById('eV').textContent = f(eV)+' m/s';
+  document.getElementById('eK').textContent = f(eK)+' J';
+  document.getElementById('eU').textContent = f(m*G*state.h)+' J';
+  document.getElementById('eE').textContent = f(m*G*state.h)+' J';
+  document.getElementById('eP').textContent = f(m*eV)+' kg·m/s';
+
+  document.getElementById('rV').textContent = f(d.vEnd)+' m/s';
+  document.getElementById('rP').textContent = f(m*d.vEnd)+' kg·m/s';
+  document.getElementById('rH').textContent = f(state.h)+' m';
+  document.getElementById('rB').textContent = f(state.b)+' m';
+  document.getElementById('rL').textContent = f(L)+' m';
+  document.getElementById('rA').textContent = f(d.th*180/Math.PI,1)+' °';
+  document.getElementById('rA2').textContent= f(d.a)+' m/s²';
+  document.getElementById('rT').textContent = f(d.tEnd)+' s';
+}
+
+/* ---------- 数值积分：从静止开始，用 a=g·sinθ 推进 ---------- */
+let last = null;
+function loop(ts){
+  if(last === null) last = ts;
+  let dt = (ts - last)/1000; last = ts;
+  if(dt > 0.05) dt = 0.05;                    // 防止切标签页后跳一大步
+
+  const d = derived();
+  if(state.running && !state.done){
+    // 子步长提高精度
+    const steps = 8, sub = dt/steps;
+    for(let i=0;i<steps;i++){
+      state.v += d.a*sub;
+      state.s += state.v*sub;
+      simTime += sub;
+      if(state.s >= d.L){ state.s = d.L; state.done = true; state.running=false; break; }
+    }
+  }
+  draw(); readouts();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- 对照表：扫一遍不同倾角，数值积分对比解析解 ---------- */
+function simulate(h,b,roll){
+  const th=Math.atan2(h,b), L=Math.hypot(h,b);
+  const a=(roll?5/7:1)*G*Math.sin(th);
+  let s=0,v=0,t=0; const dt=0.0005;
+  while(s<L){ v+=a*dt; s+=v*dt; t+=dt; if(t>60) break; }
+  return { th,L,a,v:s>=L?Math.sqrt(2*a*L):v, vSim:v, t };
+}
+
+function buildTable(){
+  const h = state.h, roll = state.roll;
+  const rows = [
+    ['很缓', h, h*3.0],
+    ['中等', h, h*1.6],
+    ['45°附近', h, h],
+    ['较陡', h, h*0.55],
+    ['很陡', h, h*0.25],
+  ];
+  let html='';
+  for(const [name,hh,bb] of rows){
+    const r = simulate(hh,bb,roll);
+    const vTh = roll ? Math.sqrt(2*(5/7)*G*hh) : Math.sqrt(2*G*hh);
+    const dev = (r.vSim - vTh)/vTh*100;
+    html += '<tr><td>'+name+'</td><td>'+hh.toFixed(2)+' m</td><td>'+bb.toFixed(2)+' m</td>'
+          + '<td>'+(r.th*180/Math.PI).toFixed(1)+'°</td><td>'+r.a.toFixed(2)+'</td>'
+          + '<td>'+vTh.toFixed(3)+' m/s</td><td>'+r.vSim.toFixed(3)+' m/s</td>'
+          + '<td>'+(dev>=0?'+':'')+dev.toFixed(2)+'%</td></tr>';
+  }
+  document.getElementById('tbody').innerHTML = html;
+
+  const vCur = state.roll ? Math.sqrt(2*(5/7)*G*h) : Math.sqrt(2*G*h);
+  const cur  = simulate(h, state.b, roll);
+  document.getElementById('thTag').textContent  = '当前理论末速度 √(2gh) = '+vCur.toFixed(3)+' m/s';
+  document.getElementById('simTag').textContent = '当前数值积分结果 = '+cur.vSim.toFixed(3)+' m/s';
+}
+
+/* ---------- 控件绑定：滑块与数字框双向联动 ---------- */
+function bind(rangeId, numId, key, min, max){
+  const r=document.getElementById(rangeId), n=document.getElementById(numId);
+  const err=document.getElementById('err');
+  const apply=(val)=>{
+    if(!Number.isFinite(val) || val<min || val>max){
+      err.textContent = '请输入 '+min+' ~ '+max+' 之间的数值'; return;
+    }
+    err.textContent='';
+    state[key]=val; r.value=val; n.value=val;
+    reset(); buildTable(); draw(); readouts();
+  };
+  r.addEventListener('input',()=>apply(parseFloat(r.value)));
+  n.addEventListener('change',()=>apply(parseFloat(n.value)));
+}
+
+function reset(){
+  state.s=0; state.v=0; simTime=0; state.running=false; state.done=false; last=null;
+}
+
+document.getElementById('btnRelease').onclick = ()=>{ reset(); state.running=true; };
+document.getElementById('btnPause').onclick   = ()=>{ if(!state.done) state.running=!state.running; };
+document.getElementById('btnReset').onclick   = ()=>{ reset(); draw(); readouts(); };
+document.getElementById('ckRoll').onchange    = e=>{ state.roll=e.target.checked; reset(); buildTable(); draw(); readouts(); };
+
+bind('hRange','hNum','h',0.2,10);
+bind('bRange','bNum','b',0.5,15);
+bind('mRange','mNum','m',0.1,20);
+
+/* ---------- 画布自适应（高清屏不糊）---------- */
+function resize(){
+  const cssW = cv.clientWidth;
+  if(!cssW) return;
+  const dpr = window.devicePixelRatio || 1;
+  const cssH = Math.round(cssW * 0.62);
+  cv.style.height = cssH + 'px';
+  cv.width  = Math.round(cssW * dpr);
+  cv.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  W = cssW; H = cssH;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+/* ---------- 启动 ---------- */
+buildTable(); readouts(); resize(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
